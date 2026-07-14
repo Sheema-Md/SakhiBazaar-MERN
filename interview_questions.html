@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sakhi Bazaar - Technical Interview Preparation Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #5A1846; /* Deep Berry */
+      --accent: #D4AF37;  /* Warm Gold */
+      --text: #2C3E50;    /* Charcoal */
+      --bg-gray: #F8F9FA; /* Muted light gray */
+      --border: #E2E8F0;
+      --code-bg: #F1F5F9;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--text);
+      line-height: 1.6;
+      background-color: #FFFFFF;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 850px;
+      margin: 0 auto;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px 40px;
+      border-left: 10px solid var(--primary);
+      position: relative;
+      page-break-after: always;
+    }
+
+    .cover-page::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: var(--accent);
+    }
+
+    .cover-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 10px;
+      letter-spacing: -0.03em;
+    }
+
+    .cover-subtitle {
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 40px;
+      opacity: 0.85;
+    }
+
+    .cover-divider {
+      width: 120px;
+      height: 4px;
+      background-color: var(--accent);
+      margin-bottom: 50px;
+    }
+
+    .cover-meta {
+      margin-top: auto;
+      font-size: 0.95rem;
+      border-top: 1px solid var(--border);
+      padding-top: 30px;
+    }
+
+    .meta-row {
+      display: flex;
+      margin-bottom: 8px;
+    }
+
+    .meta-label {
+      font-weight: 600;
+      width: 150px;
+      color: var(--primary);
+    }
+
+    .meta-value {
+      color: var(--text);
+    }
+
+    /* Document Structure */
+    h1, h2, h3 {
+      font-family: 'Outfit', sans-serif;
+      color: var(--primary);
+      page-break-after: avoid;
+    }
+
+    h2 {
+      font-size: 1.6rem;
+      margin-top: 40px;
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--primary);
+      position: relative;
+    }
+
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 60px;
+      height: 2px;
+      background-color: var(--accent);
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    p {
+      margin-bottom: 15px;
+      font-size: 1rem;
+    }
+
+    ul, ol {
+      margin-bottom: 20px;
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    strong {
+      color: #1A202C;
+      font-weight: 600;
+    }
+
+    /* Code Blocks */
+    code {
+      font-family: 'Fira Code', Consolas, Monaco, monospace;
+      font-size: 0.9em;
+      background-color: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #C53030;
+    }
+
+    pre {
+      font-family: 'Fira Code', Consolas, Monaco, monospace;
+      font-size: 0.88rem;
+      background-color: var(--bg-gray);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 25px;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+
+    pre code {
+      background-color: transparent;
+      padding: 0;
+      color: #2D3748;
+    }
+
+    /* Page Breaks and Layouts */
+    .question-section {
+      page-break-inside: avoid;
+      margin-bottom: 30px;
+    }
+
+    /* Footer for Print */
+    @media print {
+      body {
+        padding: 20px;
+        font-size: 11pt;
+      }
+
+      .container {
+        max-width: 100%;
+      }
+
+      .cover-page {
+        height: 95vh;
+        padding: 40px;
+      }
+
+      h2 {
+        margin-top: 30px;
+      }
+
+      pre {
+        background-color: #FAFAFA;
+        border: 1px solid #CCCCCC;
+      }
+
+      @page {
+        size: A4;
+        margin: 20mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Cover Page -->
+    <div class="cover-page">
+      <h1 class="cover-title">Sakhi Bazaar</h1>
+      <div class="cover-subtitle">Technical Interview & Architecture Guide</div>
+      <div class="cover-divider"></div>
+      
+      <p style="font-size: 1.1rem; max-width: 680px; margin-bottom: 40px; color: #4A5568;">
+        A comprehensive reference guide detailing the architecture, endpoints, database schemas, access guards, GenAI features, and deployment plan for the AI-Enabled Marketplace for Women Entrepreneurs.
+      </p>
+
+      <div class="cover-meta">
+        <div class="meta-row">
+          <div class="meta-label">Technical Stack:</div>
+          <div class="meta-value">MERN (MongoDB, Express, React, Node.js), Tailwind CSS v4, Gemini API</div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-label">Author:</div>
+          <div class="meta-value">Sakhi Bazaar Engineering Team</div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-label">Document Date:</div>
+          <div class="meta-value">July 2026</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Questions -->
+    
+    <!-- Q1 -->
+    <div class="question-section">
+      <h2 id="q1">Q1: What is your folder structure?</h2>
+      <p>The codebase is organized as a monorepo consisting of the main marketplace application and a standalone administrative system:</p>
+      <pre><code>SakhiBazaar_New/
+├── backend/                  # Main Express & Node.js REST API Server
+│   ├── config/               # Database connection and socket configurations
+│   ├── controllers/          # Request handler controllers (Auth, AI, Products, etc.)
+│   ├── middleware/           # Auth validation, upload management
+│   ├── models/               # MongoDB models & Mongoose schemas
+│   ├── routes/               # API endpoint routing declarations
+│   └── server.js             # Main server startup entry point
+├── frontend/                 # Main Buyer Storefront & Seller Dashboard React App
+│   ├── public/               # Static public assets
+│   ├── src/
+│   │   ├── components/       # Reusable UI components (Navbar, Filters, Cards, etc.)
+│   │   ├── context/          # React contexts (Auth, Cart, Language, Theme)
+│   │   ├── pages/            # View pages (SellerDashboard, Login, ProductDetails)
+│   │   ├── services/         # API connection handlers
+│   │   └── main.jsx          # Vite React entry point
+│   ├── package.json
+│   └── vite.config.js
+├── admin/                    # Standalone Administrative Portal
+│   ├── backend/              # Standalone Admin Node.js REST API Server
+│   │   ├── controllers/      # Admin vetting, product moderation, analytics controllers
+│   │   ├── models/           # Shared models (User, Product, Order)
+│   │   ├── routes/           # Admin router definitions
+│   │   └── server.js         # Admin server entry point (seeds default admin)
+│   └── frontend/             # Standalone Admin Dashboard React client application
+└── srs.md                    # Software Requirements Specification document</code></pre>
+      <p><strong>Separation of Concerns:</strong> The folder layout isolates client logic (Vite/React 19) from server route logic (Express/Mongoose). Furthermore, the standalone <code>admin</code> portal is completely decoupled with its own backend server and dashboard client, maintaining a separate administrative pipeline that connects directly to the same database.</p>
+    </div>
+
+    <!-- Q2 -->
+    <div class="question-section">
+      <h2 id="q2">Q2: How does authentication work?</h2>
+      <p>Authentication in Sakhi Bazaar is built on a stateless JWT validation system combined with password encryption:</p>
+      <ul>
+        <li><strong>Email/Password Sign-up:</strong> The endpoint <code>POST /api/auth/register</code> validates fields. Phone numbers are restricted to 10 digits and Aadhaar numbers to 12 digits. Passwords must be strong (8+ characters, including at least one uppercase letter, one lowercase letter, one digit, and one special character).</li>
+        <li><strong>Password Hashing:</strong> Mongoose middleware pre-save hooks in the <code>User</code> schema automatically hash plaintext passwords using <code>bcryptjs</code> with 10 salt rounds before storage.</li>
+        <li><strong>Authentication and Login:</strong> The login endpoint <code>POST /api/auth/login</code> accepts either the email or username as the identifier, matching the input against database indexes and validating the hash using <code>bcryptjs.compare()</code>.</li>
+        <li><strong>Google OAuth:</strong> <code>POST /api/auth/google-login</code> receives social logins. If the account doesn't exist, it creates a profile in MongoDB using a randomly generated strong password and a customized username.</li>
+        <li><strong>Forgot/Reset Password Flow:</strong> The <code>POST /api/auth/forgot-password</code> endpoint generates a 6-digit verification OTP with a 10-minute expiry window, logging it to the console. The user validates the OTP code at <code>POST /api/auth/verify-otp</code> and submits a new password via <code>POST /api/auth/reset-password</code>.</li>
+        <li><strong>Protected Routing Middleware:</strong> Upon authentication, a JWT is signed with the user's ID and returned to the client. The client includes the token in the <code>Authorization: Bearer &lt;token&gt;</code> header. The server's <code>protect</code> middleware validates the token, retrieves user details, and stores them on <code>req.user</code>.</li>
+      </ul>
+    </div>
+
+    <!-- Q3 -->
+    <div class="question-section">
+      <h2 id="q3">Q3: Which JWT flow do you use?</h2>
+      <p>The platform relies on a stateless, token-based <strong>Bearer Token Flow</strong> handled through HTTP request headers:</p>
+      <ol>
+        <li><strong>Generation:</strong> When a user logs in or completes signup, the server signs a JWT containing the user's Mongoose <code>_id</code> in the payload, using a strong signature secret (<code>JWT_SECRET</code>) with a 30-day expiration window.</li>
+        <li><strong>Storage:</strong> The server sends the token in the response payload. The client app intercepts this response and stores the token locally (e.g. in <code>localStorage</code> or inside the React AuthContext state).</li>
+        <li><strong>Execution:</strong> For protected operations, the client appends the token in the standard HTTP header: <code>Authorization: Bearer &lt;token_string&gt;</code>.</li>
+        <li><strong>Stateless Integrity:</strong> The backend does not maintain sessions in database tables or server caches. Instead, it relies entirely on verifying the token signatures on the fly. This architecture ensures high scalability.</li>
+      </ol>
+    </div>
+
+    <!-- Q4 -->
+    <div class="question-section">
+      <h2 id="q4">Q4: Which APIs have you created?</h2>
+      <p>The codebase runs two backend services. Here are the core endpoints:</p>
+      
+      <h3>A. Main API Router (Port 5000 / Mount: <code>/api</code>)</h3>
+      <ul>
+        <li><strong>Auth & Preferences (<code>/api/auth</code>):</strong> Account CRUD operations, login, registration, Google SSO, language/theme preferences, and OTP-based password resets.</li>
+        <li><strong>Products Catalog (<code>/api/products</code>):</strong> List catalog, advanced filtering (categories, subcategories, price range, stock, offers), search query indexing, category stats (min/max/avg), listing CRUD, and product reviews.</li>
+        <li><strong>AI Tools (<code>/api/ai</code>):</strong> Description generation and social media captions (integrated with Google Gemini).</li>
+        <li><strong>Market Pricing (<code>/api/market</code>):</strong> Commodity market price lists and marketplace category trends.</li>
+        <li><strong>Chat Hub (<code>/api/chat</code>):</strong> Send messages and fetch chat history/threads.</li>
+        <li><strong>Transactions & Logistics:</strong> Manage shopping carts (<code>/api/cart</code>), place orders (<code>/api/orders</code>), and track courier shipments (<code>/api/shipments</code>).</li>
+        <li><strong>Payments (<code>/api/payments</code>):</strong> Stripe checkout integrations, webhook listeners, and transaction refunds.</li>
+      </ul>
+
+      <h3>B. Standalone Admin API Router (Port 5001 / Mount: <code>/api/admin</code>)</h3>
+      <ul>
+        <li><strong>Auth:</strong> Standalone Admin login and registration.</li>
+        <li><strong>Sellers Vetting:</strong> List users, review business credentials, and approve/suspend seller statuses.</li>
+        <li><strong>Product Moderation:</strong> Review and flag/suspend listings violating guidelines.</li>
+        <li><strong>Platform Analytics:</strong> Collect system-wide counts (active users, listings, sales volume, platform commission revenue).</li>
+      </ul>
+    </div>
+
+    <!-- Q5 -->
+    <div class="question-section">
+      <h2 id="q5">Q5: Which MongoDB collections do you have?</h2>
+      <p>The application models define the following collections in MongoDB:</p>
+      <ul>
+        <li><strong><code>users</code>:</strong> User accounts (name, email, password hash, role, status, preferences).</li>
+        <li><strong><code>products</code>:</strong> Catalog listings (title, category, price, images, SKU, stock quantity, creator seller reference, flagging status, and an embedded array of reviews).</li>
+        <li><strong><code>carts</code>:</strong> Shopping cart items, product quantities, and saved-for-later flags.</li>
+        <li><strong><code>categories</code>:</strong> Organizes standard marketplace categories.</li>
+        <li><strong><code>conversations</code>:</strong> Chat thread references between buyers and sellers.</li>
+        <li><strong><code>messages</code>:</strong> Chat logs linked to a conversation thread.</li>
+        <li><strong><code>notifications</code>:</strong> In-app alerts for order updates and portal approvals.</li>
+        <li><strong><code>orders</code>:</strong> Transaction invoices containing lists of items, pricing, and fulfillment state.</li>
+        <li><strong><code>payments</code>:</strong> Logs of payment intents and Stripe confirmations.</li>
+        <li><strong><code>shipments</code>:</strong> Courier delivery logs and tracker data.</li>
+        <li><strong><code>bookmarks</code>:</strong> Bookmarked items.</li>
+        <li><strong><code>marketprices</code>:</strong> Commodity benchmarks (raw craft materials).</li>
+        <li><strong><code>markettrends</code>:</strong> Market indicators and popular products list.</li>
+      </ul>
+    </div>
+
+    <!-- Q6 -->
+    <div class="question-section">
+      <h2 id="q6">Q6: How exactly does Gemini generate descriptions?</h2>
+      <p>Description generation is handled by the Express <code>aiController</code> using the Google Gemini SDK:</p>
+      <ol>
+        <li><strong>Request Body:</strong> The seller submits the product <code>title</code>, <code>category</code>, and optional <code>keywords</code> to the endpoint <code>POST /api/ai/generate-description</code>.</li>
+        <li><strong>Prompt Assembly:</strong> The server builds a marketing copywriting prompt:
+          <pre><code>You are an expert marketing copywriter for 'Sakhi Bazaar', an online marketplace
+that empowers women entrepreneurs. Write a highly compelling, professional,
+and warm product description for a product with the following details:
+- Title: [Product Title]
+- Category: [Category]
+[Optional Keywords]
+
+Rules:
+1. Write in a warm, professional, storytelling style.
+2. Keep the description between 80 to 120 words.
+3. Return ONLY the plain text description itself. No intro, labels, or markdown.</code></pre>
+        </li>
+        <li><strong>Fallback and Retry Engine:</strong> To avoid rate limits (HTTP 429), the request runs through a retry loop targeting a list of models: <code>['gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash']</code>. If a request is rate-limited, the handler backs off exponentially and retries with the next model in the list, returning the trimmed description.</li>
+      </ol>
+    </div>
+
+    <!-- Q7 -->
+    <div class="question-section">
+      <h2 id="q7">Q7: How does market price analysis work?</h2>
+      <p>Market price analysis works on two layers:</p>
+      <h3>A. Local Platform Price Aggregations</h3>
+      <p>The dashboard queries <code>GET /api/products/stats/category?category=&lt;category&gt;</code> to analyze pricing data based on active listings in that category.</p>
+      <p>The backend runs a Mongoose aggregation pipeline:</p>
+      <pre><code>const stats = await Product.aggregate([
+  { $match: { category: { $regex: `^${category}$`, $options: 'i' }, status: 'active' } },
+  {
+    $group: {
+      _id: '$category',
+      avgPrice: { $avg: '$price' },
+      minPrice: { $min: '$price' },
+      maxPrice: { $max: '$price' },
+      count: { $sum: 1 }
+    }
+  }
+]);</code></pre>
+      <p>This returns the calculated average, minimum, and maximum prices, helping sellers price new items competitively.</p>
+      
+      <h3>B. Commodity Benchmarks</h3>
+      <p>The endpoints <code>/api/market-prices</code> and <code>/api/market-trends</code> return seeded data for raw materials (such as Pashmina Wool, Mulberry Silk Yarn, Terracotta Clay) to give sellers visibility into regional wholesale prices.</p>
+    </div>
+
+    <!-- Q8 -->
+    <div class="question-section">
+      <h2 id="q8">Q8: How is role-based access implemented (Admin/Seller/Buyer)?</h2>
+      <p>Access control is implemented in three layers:</p>
+      <ul>
+        <li><strong>Database Schema:</strong> The User model defines a <code>role</code> enum (<code>customer</code>, <code>seller</code>, <code>admin</code>) and a <code>status</code> field (<code>approved</code>, <code>pending</code>, <code>suspended</code>). Seller registrations default to <code>pending</code> status, requiring admin approval.</li>
+        <li><strong>Backend Controller Middleware:</strong> Express routers use verification middlewares:
+          <ul>
+            <li><code>protect</code>: Parses the JWT and attaches the verified user to <code>req.user</code>.</li>
+            <li><code>seller</code>: Confirms the user's role is exactly <code>seller</code>.</li>
+            <li><code>admin</code>: Confirms the user's role is exactly <code>admin</code>.</li>
+          </ul>
+          These middlewares are chained to guard specific routes:
+          <pre><code>router.post('/', protect, seller, createProduct);</code></pre>
+        </li>
+        <li><strong>Frontend Routing Guards:</strong> React dashboards are customized by role (SellerDashboard, CustomerDashboard, AdminDashboard). Frontend routes are wrapped in a <code>ProtectedRoute</code> component that redirects users if their active role doesn't match the route permissions.</li>
+      </ul>
+    </div>
+
+    <!-- Q9 -->
+    <div class="question-section">
+      <h2 id="q9">Q9: How did you make the application responsive?</h2>
+      <p>The frontend is designed with a mobile-first philosophy using <strong>Tailwind CSS (v4)</strong>:</p>
+      <ul>
+        <li><strong>Grid Layouts:</strong> Product catalogs use grids that adapt columns based on screen width breakpoints: <code>grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6</code> (1 column on mobile, 4 columns on large monitors).</li>
+        <li><strong>Responsive Flex Layouts:</strong> Components stack vertically on mobile and align horizontally on desktop layouts: <code>flex flex-col md:flex-row gap-8</code>.</li>
+        <li><strong>Adaptive Paddings & Constraints:</strong> Content sections adjust their padding based on screen size (e.g. <code>px-4 sm:px-6 lg:px-8</code>), and elements scale with fluid widths (e.g. <code>w-full md:w-1/2</code>) to prevent layout breakages.</li>
+        <li><strong>Conditional Visibility:</strong> Utility classes like <code>hidden sm:flex</code> or <code>hidden lg:block</code> hide elements on smaller screens to keep mobile views clean.</li>
+      </ul>
+    </div>
+
+    <!-- Q10 -->
+    <div class="question-section">
+      <h2 id="q10">Q10: How would you deploy it?</h2>
+      <p>The application is designed for cloud-based deployment, separating static assets, backend APIs, and database hosting:</p>
+      <ul>
+        <li><strong>Frontend SPA:</strong> Compile static assets via <code>npm run build</code> in the <code>frontend</code> folder. Host the compiled assets on CDN-backed static hosting platforms like <strong>Vercel</strong>, <strong>Netlify</strong>, or <strong>AWS S3 + CloudFront</strong>. Configure routing to redirect all subroutes to <code>index.html</code> to support React Router client-side routing.</li>
+        <li><strong>Backend Server:</strong> Deploy the backend REST server to cloud application hosts like <strong>Render</strong>, <strong>Railway</strong>, <strong>AWS Elastic Beanstalk</strong>, or containerized within **Google Cloud Run**. Use PM2 on virtual machines for process monitoring, memory management, and automatic crash restarts.</li>
+        <li><strong>Database Hosting:</strong> Host database instances on <strong>MongoDB Atlas</strong> (managed database-as-a-service), using IP whitelisting to restrict access only to the backend server's IP address.</li>
+        <li><strong>Media & Cloud Services:</strong> Upload product images to <strong>Cloudinary</strong> (configured via backend middleware) to optimize images and serve them through their global CDN. Use production Google AI Studio keys for Gemini API requests.</li>
+        <li><strong>Environment Secrets and CI/CD:</strong> Store sensitive credentials (<code>MONGO_URI</code>, <code>JWT_SECRET</code>, <code>GEMINI_API_KEY</code>, etc.) securely as environment variables on the hosting platform. Set up a CI/CD pipeline using <strong>GitHub Actions</strong> to automate testing and deployment on push to the <code>main</code> branch.</li>
+      </ul>
+    </div>
+
+  </div>
+</body>
+</html>
