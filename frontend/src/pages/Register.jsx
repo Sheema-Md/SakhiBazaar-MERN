@@ -29,10 +29,11 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin') navigate('/admin-dashboard');
+      if (user.role === 'admin') {
+        window.location.href = 'http://localhost:5174/login';
+      }
       else if (user.role === 'seller') navigate('/dashboard');
       else navigate('/customer-dashboard');
     }

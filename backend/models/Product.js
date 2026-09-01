@@ -70,6 +70,8 @@ const productSchema = new mongoose.Schema({
       userName: { type: String, default: '' },
       rating: { type: Number, default: 5 },
       comment: { type: String, default: '' },
+      images: { type: [String], default: [] },
+      videos: { type: [String], default: [] },
       createdAt: {
         type: Date,
         default: Date.now,
@@ -110,7 +112,9 @@ productSchema.pre('save', function(next) {
   next();
 });
 
-// Define indexes for search optimization
+// Define indexes for search & filter optimization
 productSchema.index({ title: 'text', description: 'text', sku: 'text', tags: 'text' });
+productSchema.index({ seller: 1, createdAt: -1 });
+productSchema.index({ category: 1, price: 1 });
 
 module.exports = mongoose.model('Product', productSchema);

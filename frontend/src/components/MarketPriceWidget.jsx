@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { 
   TrendingUp, TrendingDown, RefreshCw, 
-  Award, CheckCircle 
+  Award, CheckCircle, Calendar
 } from 'lucide-react';
 
 const MarketPriceWidget = () => {
@@ -11,6 +11,9 @@ const MarketPriceWidget = () => {
   const [activeTab, setActiveTab] = useState('prices'); // 'prices' or 'trends'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Seasonal filter state
+  const [selectedSeason, setSelectedSeason] = useState('All');
 
   const fetchData = async () => {
     setLoading(true);
@@ -98,28 +101,47 @@ const MarketPriceWidget = () => {
           </div>
         </div>
 
-        {/* Tab Selection buttons */}
-        <div className="flex bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveTab('prices')}
-            className={`px-3 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
-              activeTab === 'prices'
-                ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            Prices
-          </button>
-          <button
-            onClick={() => setActiveTab('trends')}
-            className={`px-3 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
-              activeTab === 'trends'
-                ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            Market Trends
-          </button>
+        {/* Filters Panel */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Season Select */}
+          <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 px-2 py-1 rounded-xl">
+            <Calendar size={10} className="text-slate-400" />
+            <select
+              value={selectedSeason}
+              onChange={(e) => setSelectedSeason(e.target.value)}
+              className="bg-transparent border-0 text-[10px] font-bold text-slate-750 dark:text-slate-300 focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="All">All Seasons</option>
+              <option value="Summer">Summer Season</option>
+              <option value="Winter">Winter Season</option>
+              <option value="Monsoon">Monsoon Season</option>
+              <option value="Festive">Festive Season</option>
+            </select>
+          </div>
+
+          {/* Tab Selection buttons */}
+          <div className="flex bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveTab('prices')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                activeTab === 'prices'
+                  ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              Prices
+            </button>
+            <button
+              onClick={() => setActiveTab('trends')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                activeTab === 'trends'
+                  ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              Market Trends
+            </button>
+          </div>
         </div>
       </div>
 
@@ -127,7 +149,22 @@ const MarketPriceWidget = () => {
       {activeTab === 'prices' && (
         <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
           {prices.map((item, idx) => {
+            let displayPrice = item.currentPrice;
+            let displayMultiplier = 1;
+
+            if (selectedSeason !== 'All' && item.seasonalPricing) {
+              const seasonalInfo = item.seasonalPricing.find(
+                s => s.season.toLowerCase() === selectedSeason.toLowerCase()
+              );
+              if (seasonalInfo) {
+                displayPrice = seasonalInfo.avgPrice;
+                displayMultiplier = seasonalInfo.multiplier;
+              }
+            }
+
+            const seasonalDiffPercent = Math.round((displayMultiplier - 1) * 100);
             const isUp = item.weeklyChange >= 0;
+            
             return (
               <div 
                 key={idx}
@@ -135,10 +172,21 @@ const MarketPriceWidget = () => {
               >
                 {/* Product Name & Category */}
                 <div className="min-w-0 flex-1 pr-3">
-                  <span className="text-[9px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-955/20 dark:text-rose-455 px-2 py-0.5 rounded-full capitalize">
-                    {item.category}
-                  </span>
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate mt-1">{item.productName}</h4>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[9px] font-bold text-rose-605 bg-rose-50 dark:bg-rose-955/20 dark:text-rose-455 px-2 py-0.5 rounded-full capitalize">
+                      {item.category}
+                    </span>
+                    {selectedSeason !== 'All' && seasonalDiffPercent !== 0 && (
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase leading-none ${
+                        seasonalDiffPercent > 0 
+                          ? 'bg-orange-50 text-orange-600 dark:bg-orange-955/20 dark:text-orange-400 border border-orange-100/50 dark:border-orange-950/20' 
+                          : 'bg-blue-50 text-blue-600 dark:bg-blue-955/20 dark:text-blue-400 border border-blue-100/50 dark:border-blue-955/20'
+                      }`}>
+                        {selectedSeason}: {seasonalDiffPercent > 0 ? '+' : ''}{seasonalDiffPercent}%
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate mt-1.5">{item.productName}</h4>
                 </div>
 
                 {/* SVG Sparkline */}
@@ -148,7 +196,7 @@ const MarketPriceWidget = () => {
 
                 {/* Price Display & weekly change */}
                 <div className="text-right shrink-0">
-                  <p className="text-xs font-extrabold text-slate-900 dark:text-white">₹{item.currentPrice.toLocaleString('en-IN')}</p>
+                  <p className="text-xs font-extrabold text-slate-900 dark:text-white">₹{displayPrice.toLocaleString('en-IN')}</p>
                   <p className={`text-[10px] font-bold mt-0.5 flex items-center justify-end gap-0.5 ${
                     isUp ? 'text-green-600' : 'text-red-500'
                   }`}>

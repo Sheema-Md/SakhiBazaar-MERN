@@ -13,7 +13,13 @@ const seedMarketPrices = async () => {
         yesterdayPrice: 3750,
         weeklyChange: 2.1,
         monthlyChange: 5.4,
-        priceTrend: [3500, 3600, 3700, 3720, 3750, 3800]
+        priceTrend: [3500, 3600, 3700, 3720, 3750, 3800],
+        seasonalPricing: [
+          { season: 'Winter', multiplier: 1.20, avgPrice: 4560 },
+          { season: 'Summer', multiplier: 0.90, avgPrice: 3420 },
+          { season: 'Monsoon', multiplier: 1.00, avgPrice: 3800 },
+          { season: 'Festive', multiplier: 1.10, avgPrice: 4180 }
+        ]
       },
       {
         productName: 'Organic Wild Honey (Per Litre)',
@@ -22,7 +28,13 @@ const seedMarketPrices = async () => {
         yesterdayPrice: 430,
         weeklyChange: -1.5,
         monthlyChange: 8.2,
-        priceTrend: [380, 395, 410, 425, 430, 420]
+        priceTrend: [380, 395, 410, 425, 430, 420],
+        seasonalPricing: [
+          { season: 'Winter', multiplier: 1.15, avgPrice: 483 },
+          { season: 'Summer', multiplier: 1.00, avgPrice: 420 },
+          { season: 'Monsoon', multiplier: 1.25, avgPrice: 525 },
+          { season: 'Festive', multiplier: 1.10, avgPrice: 462 }
+        ]
       },
       {
         productName: 'Mulberry Silk Yarn (Per Kg)',
@@ -31,7 +43,13 @@ const seedMarketPrices = async () => {
         yesterdayPrice: 5200,
         weeklyChange: 0.0,
         monthlyChange: -2.3,
-        priceTrend: [5300, 5280, 5250, 5200, 5200, 5200]
+        priceTrend: [5300, 5280, 5250, 5200, 5200, 5200],
+        seasonalPricing: [
+          { season: 'Winter', multiplier: 1.05, avgPrice: 5460 },
+          { season: 'Summer', multiplier: 1.00, avgPrice: 5200 },
+          { season: 'Monsoon', multiplier: 0.95, avgPrice: 4940 },
+          { season: 'Festive', multiplier: 1.20, avgPrice: 6240 }
+        ]
       },
       {
         productName: 'Silver Filigree Wire (Per 100g)',
@@ -40,7 +58,13 @@ const seedMarketPrices = async () => {
         yesterdayPrice: 8400,
         weeklyChange: 3.2,
         monthlyChange: 12.5,
-        priceTrend: [7500, 7800, 8100, 8250, 8400, 8500]
+        priceTrend: [7500, 7800, 8100, 8250, 8400, 8500],
+        seasonalPricing: [
+          { season: 'Winter', multiplier: 1.10, avgPrice: 9350 },
+          { season: 'Summer', multiplier: 1.00, avgPrice: 8500 },
+          { season: 'Monsoon', multiplier: 1.00, avgPrice: 8500 },
+          { season: 'Festive', multiplier: 1.30, avgPrice: 11050 }
+        ]
       },
       {
         productName: 'Terracotta Clay (Per Ton)',
@@ -49,7 +73,13 @@ const seedMarketPrices = async () => {
         yesterdayPrice: 12000,
         weeklyChange: 0.8,
         monthlyChange: 1.5,
-        priceTrend: [11800, 11850, 11900, 12000, 12000, 12000]
+        priceTrend: [11800, 11850, 11900, 12000, 12000, 12000],
+        seasonalPricing: [
+          { season: 'Winter', multiplier: 1.00, avgPrice: 12000 },
+          { season: 'Summer', multiplier: 1.10, avgPrice: 13200 },
+          { season: 'Monsoon', multiplier: 0.80, avgPrice: 9600 },
+          { season: 'Festive', multiplier: 1.15, avgPrice: 13800 }
+        ]
       },
       {
         productName: 'Green Cardamom (Per Kg)',
@@ -58,7 +88,13 @@ const seedMarketPrices = async () => {
         yesterdayPrice: 2250,
         weeklyChange: -3.4,
         monthlyChange: -6.2,
-        priceTrend: [2400, 2350, 2300, 2280, 2250, 2200]
+        priceTrend: [2400, 2350, 2300, 2280, 2250, 2200],
+        seasonalPricing: [
+          { season: 'Winter', multiplier: 1.10, avgPrice: 2420 },
+          { season: 'Summer', multiplier: 0.90, avgPrice: 1980 },
+          { season: 'Monsoon', multiplier: 1.20, avgPrice: 2640 },
+          { season: 'Festive', multiplier: 1.15, avgPrice: 2530 }
+        ]
       }
     ];
 

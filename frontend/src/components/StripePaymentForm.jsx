@@ -96,7 +96,7 @@ const StripePaymentForm = ({ clientSecret, orderId, onPaymentSuccess, onPaymentE
             Processing Secure Payment...
           </>
         ) : (
-          `Pay ₹${totalAmount.toLocaleString('en-IN')}`
+          `Pay ₹${totalAmount ? totalAmount.toLocaleString('en-IN') : ''}`
         )}
       </button>
     </form>

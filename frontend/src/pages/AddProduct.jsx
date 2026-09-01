@@ -5,6 +5,7 @@ import {
   PlusCircle, ArrowLeft, Image as ImageIcon, Sparkles, 
   AlertCircle, RefreshCw, MapPin, X, ChevronLeft, ChevronRight 
 } from 'lucide-react';
+import SeasonalPricingGuide from '../components/SeasonalPricingGuide';
 
 const CATEGORY_TREE = {
   'Clothing': ['Sarees', 'Kurtis', 'Shawls', 'Kids Wear'],
@@ -406,7 +407,9 @@ const AddProduct = () => {
                   placeholder="E.g. 10"
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-100"
                 />
-              </div>              <div>
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider mb-1.5">Stock Availability</label>
                 <select
                   value={stockStatus}
@@ -418,6 +421,9 @@ const AddProduct = () => {
                 </select>
               </div>
             </div>
+
+            {/* Live Seasonal Pricing Calculator Widget */}
+            <SeasonalPricingGuide basePrice={price} category={category} />
 
             {/* Stock Quantity */}
             <div>

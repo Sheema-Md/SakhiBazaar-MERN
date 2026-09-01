@@ -131,7 +131,57 @@ Rules:
   }
 };
 
+// @desc    Translate product details using Google Gemini
+// @route   POST /api/ai/translate
+// @access  Public
+const translateText = async (req, res) => {
+  try {
+    const { text, targetLanguage } = req.body;
+
+    if (!text || !targetLanguage) {
+      return res.status(400).json({ message: 'Please provide both text and targetLanguage' });
+    }
+
+    if (isApiKeyInvalid(process.env.GEMINI_API_KEY)) {
+      return res.status(400).json({ 
+        message: 'Google Gemini API key is missing or invalid on the server. Please add a valid GEMINI_API_KEY in your backend/.env file.' 
+      });
+    }
+
+    const languageMap = {
+      hi: 'Hindi (हिन्दी)',
+      te: 'Telugu (తెలుగు)',
+      ta: 'Tamil (தமிழ்)',
+      kn: 'Kannada (ಕನ್ನಡ)',
+      ml: 'Malayalam (മലയാളം)',
+      mr: 'Marathi (मराठी)',
+      bn: 'Bengali (বাংলা)',
+      gu: 'Gujarati (ગુજરાતી)',
+      pa: 'Punjabi (ਪੰਜਾਬੀ)',
+      en: 'English'
+    };
+
+    const targetLangName = languageMap[targetLanguage] || targetLanguage;
+
+    const prompt = `You are a professional translator. Translate the following product details (can be a title, description, or caption) into standard ${targetLangName}.
+Keep the same layout, product terminology, tone, and line structure. Do NOT add any notes, headers, comments, introductory remarks, or quote wrappers. Return ONLY the translated text.
+
+Text to translate:
+${text}`;
+
+    const result = await callWithRetry(prompt);
+    const response = await result.response;
+    const translatedText = response.text().trim();
+
+    res.json({ translatedText });
+  } catch (error) {
+    console.error('Gemini translation error:', error);
+    res.status(500).json({ message: 'AI translation failed: ' + getFriendlyErrorMessage(error) });
+  }
+};
+
 module.exports = {
   generateDescription,
   generateCaption,
+  translateText,
 };

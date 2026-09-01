@@ -9,8 +9,9 @@ const userSchema = new mongoose.Schema({
   },
   username: {
     type: String,
-    required: [true, 'Please add a username'],
+    required: false,
     unique: true,
+    sparse: true,
     lowercase: true,
     trim: true,
   },
@@ -41,12 +42,27 @@ const userSchema = new mongoose.Schema({
   },
   phoneNumber: {
     type: String,
-    required: [true, 'Please add a phone number'],
+    required: false,
+    validate: {
+      validator: function(v) {
+        if (!v) return true;
+        return /^\d{10}$/.test(v);
+      },
+      message: 'Phone number must be exactly 10 digits',
+    },
   },
   aadhaarNumber: {
     type: String,
-    required: [true, 'Please add an Aadhaar number'],
+    required: false,
     unique: true,
+    sparse: true,
+    validate: {
+      validator: function(v) {
+        if (!v) return true;
+        return /^\d{12}$/.test(v);
+      },
+      message: 'Aadhaar number must be exactly 12 digits',
+    },
   },
   address: {
     type: String,

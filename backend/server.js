@@ -57,6 +57,15 @@ const marketRoutes = require('./routes/marketRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Disable x-powered-by header and apply security response headers
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
 // Configure CORS dynamically to support localhost development origins and enable credentials
 app.use(cors({
   origin: (origin, callback) => {
@@ -103,6 +112,27 @@ app.use('/market', marketRoutes);
 app.get('/', (req, res) => {
   res.send('Sakhi Bazaar API is running...');
 });
+
+// Production Cloud Deployment Health Monitor Endpoint
+app.get('/api/health', (req, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatus = dbState === 1 ? 'healthy' : dbState === 2 ? 'connecting' : 'unhealthy';
+  res.json({
+    status: 'UP',
+    service: 'Sakhi Bazaar Production Backend',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    database: {
+      status: dbStatus,
+    },
+    environment: process.env.NODE_ENV || 'development',
+  });
+});
+
+// Central Production Error Handling Middleware
+const { notFound, errorHandler } = require('./middleware/errorMiddleware');
+app.use(notFound);
+app.use(errorHandler);
 
 // Wrap express server in http
 const server = http.createServer(app);

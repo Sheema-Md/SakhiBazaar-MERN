@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Tag, Sparkles } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const ProductCard = ({ product }) => {
+  const { t } = useLanguage();
   const discount = product.offerPercentage || 0;
   const originalPrice = product.price;
   const discountedPrice = discount > 0 ? Math.round(originalPrice - (originalPrice * discount / 100)) : originalPrice;
@@ -22,7 +24,7 @@ const ProductCard = ({ product }) => {
         {/* Category Badge */}
         <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-bold text-rose-700 dark:text-rose-455 border border-rose-100 dark:border-rose-900/40 flex items-center gap-1 shadow-sm">
           <Tag size={10} />
-          <span className="capitalize text-[10px]">{product.category}</span>
+          <span className="capitalize text-[10px]">{t(product.category) || product.category}</span>
         </div>
 
         {/* AI Caption Indicator (If product has marketing caption) */}
@@ -38,7 +40,7 @@ const ProductCard = ({ product }) => {
         <div>
           {/* Seller Name */}
           <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-            By {product.seller?.name || 'Seller'}
+            {t('by') || 'By'} {product.seller?.name || 'Seller'}
           </span>
           {/* Product Title */}
           <h3 className="font-bold text-gray-900 dark:text-white text-sm mt-1 line-clamp-1 group-hover:text-rose-600 transition-colors">
@@ -62,13 +64,13 @@ const ProductCard = ({ product }) => {
                   ₹{originalPrice.toLocaleString('en-IN')}
                 </span>
                 <span className="text-[9px] font-bold text-green-600 dark:text-green-400">
-                  {discount}% OFF
+                  {discount}% {t('off') || 'OFF'}
                 </span>
               </div>
             )}
           </div>
           <span className="text-[10px] font-bold text-rose-600 group-hover:underline">
-            View Details
+            {t('viewDetails') || 'View Details'}
           </span>
         </div>
       </div>

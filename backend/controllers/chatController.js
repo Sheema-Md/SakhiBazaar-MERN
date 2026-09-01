@@ -1,7 +1,40 @@
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const Product = require('../models/Product');
+const Order = require('../models/Order');
+const mongoose = require('mongoose');
 const { getIo, getActiveUserSocketId } = require('../config/socket');
+
+// Helper: Verify whether an order exists between two users (one as customer, one as seller)
+const hasOrderBetweenUsers = async (user1Id, user2Id) => {
+  // Check if user1 is admin or user2 is admin
+  const user1 = await User.findById(user1Id);
+  const user2 = await User.findById(user2Id);
+  if (user1?.role === 'admin' || user2?.role === 'admin') return true;
+
+  // Case A: user1 is customer, user2 is seller
+  const user2Products = await Product.find({ seller: user2Id }).distinct('_id');
+  if (user2Products.length > 0) {
+    const order1 = await Order.findOne({
+      customer: user1Id,
+      'products.product': { $in: user2Products }
+    });
+    if (order1) return true;
+  }
+
+  // Case B: user2 is customer, user1 is seller
+  const user1Products = await Product.find({ seller: user1Id }).distinct('_id');
+  if (user1Products.length > 0) {
+    const order2 = await Order.findOne({
+      customer: user2Id,
+      'products.product': { $in: user1Products }
+    });
+    if (order2) return true;
+  }
+
+  return false;
+};
 
 // @desc    Get or create a conversation between logged-in user and another participant
 // @route   POST /api/chat/conversations
@@ -11,8 +44,8 @@ const getOrCreateConversation = async (req, res) => {
     const { recipientId, productId } = req.body;
     const senderId = req.user._id;
 
-    if (!recipientId) {
-      return res.status(400).json({ message: 'Please provide a recipient ID' });
+    if (!recipientId || !mongoose.Types.ObjectId.isValid(recipientId)) {
+      return res.status(400).json({ message: 'Please provide a valid recipient ID' });
     }
 
     if (senderId.toString() === recipientId.toString()) {
@@ -25,7 +58,15 @@ const getOrCreateConversation = async (req, res) => {
       return res.status(404).json({ message: 'Recipient user not found' });
     }
 
-    // Look for existing conversation between these participants (regardless of product)
+    // STRICT REQUIREMENT: Chat is allowed ONLY if an order exists between Buyer and Seller
+    const canChat = await hasOrderBetweenUsers(senderId, recipientId);
+    if (!canChat) {
+      return res.status(403).json({
+        message: 'Chat is enabled only after placing an order with this seller.'
+      });
+    }
+
+    // Look for existing conversation between these participants
     let conversation = await Conversation.findOne({
       participants: { $all: [senderId, recipientId] },
     });
@@ -33,7 +74,7 @@ const getOrCreateConversation = async (req, res) => {
     if (!conversation) {
       conversation = await Conversation.create({
         participants: [senderId, recipientId],
-        productId: productId || null,
+        productId: productId && mongoose.Types.ObjectId.isValid(productId) ? productId : null,
       });
     }
 
@@ -45,6 +86,7 @@ const getOrCreateConversation = async (req, res) => {
 
     res.json(conversation);
   } catch (error) {
+    console.error('getOrCreateConversation error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -83,6 +125,16 @@ const sendMessage = async (req, res) => {
       return res.status(400).json({ message: 'Missing conversationId, recipientId, or text' });
     }
 
+    if (!mongoose.Types.ObjectId.isValid(conversationId) || !mongoose.Types.ObjectId.isValid(recipientId)) {
+      return res.status(400).json({ message: 'Invalid conversationId or recipientId format' });
+    }
+
+    // Check order restriction
+    const canChat = await hasOrderBetweenUsers(senderId, recipientId);
+    if (!canChat) {
+      return res.status(403).json({ message: 'Chat is enabled only after placing an order with this seller.' });
+    }
+
     // Save message to database
     const message = await Message.create({
       conversationId,
@@ -107,11 +159,8 @@ const sendMessage = async (req, res) => {
       const recipientSocketId = getActiveUserSocketId(recipientId);
 
       if (recipientSocketId) {
-        // Direct event to recipient's connected socket
         io.to(recipientSocketId).emit('receive_message', populatedMessage);
         console.log(`Dispatched real-time message to active user ${recipientId} via socket ${recipientSocketId}`);
-      } else {
-        console.log(`Recipient ${recipientId} is offline. Message saved to DB only.`);
       }
     } catch (socketErr) {
       console.error('Socket notification bypass:', socketErr.message);
@@ -119,6 +168,7 @@ const sendMessage = async (req, res) => {
 
     res.status(201).json(populatedMessage);
   } catch (error) {
+    console.error('sendMessage error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -131,13 +181,18 @@ const getMessages = async (req, res) => {
     const { conversationId } = req.params;
     const userId = req.user._id;
 
+    if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+      return res.status(400).json({ message: 'Invalid conversation ID format' });
+    }
+
     // Verify user is a participant of this conversation
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
       return res.status(404).json({ message: 'Conversation not found' });
     }
 
-    if (!conversation.participants.includes(userId)) {
+    const isParticipant = conversation.participants.some(p => p.toString() === userId.toString());
+    if (!isParticipant) {
       return res.status(403).json({ message: 'Not authorized to access these chat logs' });
     }
 
@@ -155,6 +210,7 @@ const getMessages = async (req, res) => {
 
     res.json(messages);
   } catch (error) {
+    console.error('getMessages error:', error);
     res.status(500).json({ message: error.message });
   }
 };

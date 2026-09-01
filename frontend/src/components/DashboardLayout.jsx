@@ -140,16 +140,16 @@ const DashboardLayout = () => {
                   key={`${item.view}-${item.label}`}
                   to={`${item.link}?view=${item.view}`}
                   onClick={() => setIsSidebarOpen(false)}
-                  className={`flex items-center rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isCollapsed ? 'justify-center p-3' : 'gap-3 px-3.5 py-2.5'
+                  className={`flex items-center rounded-2xl text-base font-bold transition-all duration-200 ${
+                    isCollapsed ? 'justify-center p-3.5' : 'gap-3.5 px-4 py-3'
                   } ${
                     active
-                      ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-100/30 dark:border-rose-950/30'
-                      : 'text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-gradient-to-r from-rose-600 to-purple-600 text-white shadow-md shadow-rose-200/50 dark:shadow-none'
+                      : 'text-slate-750 dark:text-slate-200 hover:bg-rose-50/80 dark:hover:bg-slate-700/60 hover:text-rose-600 dark:hover:text-white'
                   }`}
                   title={isCollapsed ? item.label : ''}
                 >
-                  <Icon size={18} className="shrink-0" />
+                  <Icon size={20} className="shrink-0" />
                   {(!isCollapsed || isSidebarOpen) && (
                     <span className="truncate">{item.label}</span>
                   )}
@@ -161,7 +161,7 @@ const DashboardLayout = () => {
           {/* Bottom user quick detail */}
           <div className="p-4 border-t border-rose-100/30 dark:border-slate-700 bg-rose-50/10 dark:bg-slate-800/40">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl overflow-hidden bg-gradient-to-tr from-rose-500 to-indigo-650 flex items-center justify-center text-xs font-bold text-white shrink-0">
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-tr from-rose-500 to-indigo-650 flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm">
                 {user?.avatar ? (
                   <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -170,8 +170,8 @@ const DashboardLayout = () => {
               </div>
               {(!isCollapsed || isSidebarOpen) && (
                 <div className="flex-grow min-w-0">
-                  <p className="text-xs font-bold truncate text-slate-850 dark:text-slate-105">{user?.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate leading-none mt-0.5 capitalize">{user?.role}</p>
+                  <p className="text-sm font-extrabold truncate text-slate-900 dark:text-white">{user?.name}</p>
+                  <p className="text-xs font-bold text-slate-400 truncate leading-none mt-0.5 capitalize">{user?.role}</p>
                 </div>
               )}
             </div>

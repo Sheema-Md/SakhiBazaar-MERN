@@ -559,6 +559,11 @@ const createProductReview = async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (!product) {
+      // Safely delete any uploaded files if product is not found
+      if (req.files) {
+        const allFiles = [...(req.files.images || []), ...(req.files.videos || [])];
+        allFiles.forEach(f => deleteLocalFile(f.path));
+      }
       return res.status(404).json({ message: 'Product not found' });
     }
 
@@ -568,7 +573,49 @@ const createProductReview = async (req, res) => {
     );
 
     if (alreadyReviewed) {
+      if (req.files) {
+        const allFiles = [...(req.files.images || []), ...(req.files.videos || [])];
+        allFiles.forEach(f => deleteLocalFile(f.path));
+      }
       return res.status(400).json({ message: 'Product already reviewed' });
+    }
+
+    let imageUrls = [];
+    let videoUrls = [];
+
+    // Process files if present
+    if (req.files) {
+      if (req.files.images) {
+        for (const file of req.files.images) {
+          try {
+            const result = await cloudinary.uploader.upload(file.path, {
+              folder: 'sakhi_bazaar_reviews',
+              resource_type: 'auto'
+            });
+            imageUrls.push(result.secure_url);
+            deleteLocalFile(file.path);
+          } catch (uploadErr) {
+            console.error('Cloudinary review image upload failed:', uploadErr.message);
+            deleteLocalFile(file.path);
+          }
+        }
+      }
+
+      if (req.files.videos) {
+        for (const file of req.files.videos) {
+          try {
+            const result = await cloudinary.uploader.upload(file.path, {
+              folder: 'sakhi_bazaar_reviews',
+              resource_type: 'auto'
+            });
+            videoUrls.push(result.secure_url);
+            deleteLocalFile(file.path);
+          } catch (uploadErr) {
+            console.error('Cloudinary review video upload failed:', uploadErr.message);
+            deleteLocalFile(file.path);
+          }
+        }
+      }
     }
 
     const review = {
@@ -576,6 +623,8 @@ const createProductReview = async (req, res) => {
       userName: req.user.name,
       rating: Number(rating),
       comment: comment || '',
+      images: imageUrls,
+      videos: videoUrls,
     };
 
     product.reviews.push(review);
@@ -593,6 +642,10 @@ const createProductReview = async (req, res) => {
       
     res.status(201).json(updatedProduct);
   } catch (error) {
+    if (req.files) {
+      const allFiles = [...(req.files.images || []), ...(req.files.videos || [])];
+      allFiles.forEach(f => deleteLocalFile(f.path));
+    }
     res.status(500).json({ message: error.message });
   }
 };

@@ -8,9 +8,10 @@ import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import CategoryTreeFilter from '../components/CategoryTreeFilter';
 import ProductCard from '../components/ProductCard';
+import DeliveryTrackingUI from '../components/DeliveryTrackingUI';
 import {
   ShoppingBag, Heart, Star, CheckCircle, MessageSquare, Edit2,
-  Camera, ShoppingCart, Search, Trash, Bell, MapPin, Sparkles, ShieldCheck, RefreshCw
+  Camera, ShoppingCart, Search, Trash, Bell, MapPin, Sparkles, ShieldCheck, RefreshCw, Printer
 } from 'lucide-react';
 
 const generateConversationId = () => {
@@ -366,28 +367,28 @@ const CustomerDashboard = () => {
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-rose-500 to-indigo-650 p-6 sm:p-8 rounded-3xl text-white shadow-md">
-            <h1 className="text-xl sm:text-2xl font-black">Hello, {profileData.name || user?.name || 'Valued Buyer'}!</h1>
+            <h1 className="text-xl sm:text-2xl font-black">{t('hello') || 'Hello'}, {profileData.name || user?.name || 'Valued Buyer'}!</h1>
             <p className="text-xs text-rose-100 mt-1 max-w-sm">
-              Welcome back to your client control panel. Monitor your purchase timeline, view updates, and explore products.
+              {t('welcomeDashboard') || 'Welcome back to your client control panel. Monitor your purchase timeline, view updates, and explore products.'}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-rose-100/30 dark:border-slate-700 shadow-sm text-center">
               <ShoppingBag className="mx-auto text-rose-500 mb-2" size={28} />
-              <h3 className="text-sm font-bold text-slate-400">Total Purchases</h3>
+              <h3 className="text-sm font-bold text-slate-400">{t('totalPurchases') || 'Total Purchases'}</h3>
               <p className="text-2xl font-black text-slate-800 dark:text-white mt-1">{orders.length}</p>
             </div>
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-rose-100/30 dark:border-slate-700 shadow-sm text-center">
               <Heart className="mx-auto text-rose-500 mb-2" size={28} />
-              <h3 className="text-sm font-bold text-slate-400">Saved Favorites</h3>
+              <h3 className="text-sm font-bold text-slate-400">{t('savedFavorites') || 'Saved Favorites'}</h3>
               <p className="text-2xl font-black text-slate-800 dark:text-white mt-1">{wishlistItems.length}</p>
             </div>
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-rose-100/30 dark:border-slate-700 shadow-sm text-center">
               <Bell className="mx-auto text-rose-500 mb-2" size={28} />
-              <h3 className="text-sm font-bold text-slate-400">Notifications</h3>
+              <h3 className="text-sm font-bold text-slate-400">{t('notifications') || 'Notifications'}</h3>
               <p className="text-2xl font-black text-slate-800 dark:text-white mt-1">
-                {notifications.filter((n) => n.unread).length} New
+                {notifications.filter((n) => n.unread).length} {t('new') || 'New'}
               </p>
             </div>
           </div>
@@ -396,17 +397,17 @@ const CustomerDashboard = () => {
 
           {/* Recent Orders log */}
           <div className="bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700 p-6 rounded-3xl shadow-sm">
-            <h2 className="text-sm font-bold tracking-tight mb-4">Recent Transactions</h2>
+            <h2 className="text-sm font-bold tracking-tight mb-4">{t('recentTransactions') || 'Recent Transactions'}</h2>
             {orders.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-rose-50 dark:border-slate-750 text-slate-400 uppercase tracking-wider">
-                      <th className="py-3 font-semibold">Order ID</th>
-                      <th className="py-3 font-semibold">Placed Date</th>
-                      <th className="py-3 font-semibold">Price Total</th>
-                      <th className="py-3 font-semibold">Ship Status</th>
-                      <th className="py-3 font-semibold">Actions</th>
+                      <th className="py-3 font-semibold">{t('orderId') || 'Order ID'}</th>
+                      <th className="py-3 font-semibold">{t('placedDate') || 'Placed Date'}</th>
+                      <th className="py-3 font-semibold">{t('priceTotal') || 'Price Total'}</th>
+                      <th className="py-3 font-semibold">{t('shipStatus') || 'Ship Status'}</th>
+                      <th className="py-3 font-semibold">{t('actions') || 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-rose-50 dark:divide-slate-750 font-medium">
@@ -430,7 +431,7 @@ const CustomerDashboard = () => {
                             }}
                             className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
                           >
-                            Track order
+                            {t('trackOrder') || 'Track order'}
                           </button>
                         </td>
                       </tr>
@@ -439,7 +440,7 @@ const CustomerDashboard = () => {
                 </table>
               </div>
             ) : (
-              <div className="text-center py-6 text-slate-450 text-xs">No transaction records found.</div>
+              <div className="text-center py-6 text-slate-455 text-xs">{t('noTransactions') || 'No transaction records found.'}</div>
             )}
           </div>
         </div>
@@ -479,7 +480,7 @@ const CustomerDashboard = () => {
                   <RefreshCw size={24} className="animate-spin text-rose-500" />
                 </div>
               ) : filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                   {filteredProducts.map((product) => (
                     <ProductCard key={product._id} product={product} />
                   ))}
@@ -561,7 +562,7 @@ const CustomerDashboard = () => {
                           </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => {
                               handleTrackOrder(order._id);
@@ -570,6 +571,13 @@ const CustomerDashboard = () => {
                             className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                           >
                             Track Path
+                          </button>
+                          <button
+                            onClick={() => navigate('/order-success', { state: { orderId: order._id, name: user?.name } })}
+                            className="px-3 py-1.5 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-400 hover:bg-rose-50/50 dark:hover:bg-rose-950/20 text-xs font-semibold rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Printer size={12} />
+                            Print Invoice
                           </button>
                           {item.product?.seller && (
                             <button
@@ -676,55 +684,7 @@ const CustomerDashboard = () => {
 
             <div className="lg:col-span-2">
               {orderTracking ? (
-                <div className="bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700 p-6 rounded-3xl shadow-sm space-y-6">
-                  <div className="border-b border-rose-50 dark:border-slate-750 pb-3 flex justify-between items-center">
-                    <div>
-                      <h4 className="text-xs font-mono font-bold text-slate-400">TRACKING ORDER ID: {orderTracking._id}</h4>
-                      {orderTracking.trackingNumber && <p className="text-xs font-bold mt-1 text-rose-600 dark:text-rose-400">Tracking Number: {orderTracking.trackingNumber}</p>}
-                    </div>
-                    <span className="text-xs font-bold text-slate-500 capitalize bg-slate-100 dark:bg-slate-700 px-2.5 py-0.5 rounded-full">{orderTracking.orderStatus}</span>
-                  </div>
-
-                  {/* Horizontal visual tracking bar */}
-                  <div className="flex items-center gap-4 py-2">
-                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-200 dark:border-slate-750 relative">
-                      <div className="h-full bg-rose-500 transition-all duration-500" style={{
-                        width: orderTracking.orderStatus === 'Delivered' ? '100%' :
-                               orderTracking.orderStatus === 'Shipped' ? '75%' :
-                               orderTracking.orderStatus === 'Processing' ? '40%' : '15%'
-                      }} />
-                    </div>
-                  </div>
-
-                  {/* Timeline listing */}
-                  <div className="relative pl-6 space-y-5 border-l-2 border-rose-100 dark:border-slate-700 ml-2 pt-2">
-                    {orderTracking.timeline && orderTracking.timeline.length > 0 ? (
-                      orderTracking.timeline.map((event, idx) => (
-                        <div key={idx} className="relative">
-                          <span className="absolute -left-[30px] top-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 flex items-center justify-center shadow-xs">
-                            <CheckCircle size={8} className="text-white fill-current" />
-                          </span>
-                          <div>
-                            <h5 className="text-xs font-bold text-slate-800 dark:text-white capitalize">{event.status}</h5>
-                            <p className="text-[10px] text-slate-400 mt-0.5">{event.description}</p>
-                            <span className="text-[8px] text-slate-450 dark:text-slate-500 mt-0.5 block">{new Date(event.timestamp).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="relative">
-                        <span className="absolute -left-[30px] top-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 flex items-center justify-center">
-                          <CheckCircle size={8} className="text-white fill-current" />
-                        </span>
-                        <div>
-                          <h5 className="text-xs font-bold text-slate-800 dark:text-white">Order Placed</h5>
-                          <p className="text-[10px] text-slate-400 mt-0.5">Your payment is confirmed. Awaiting seller processing details.</p>
-                          <span className="text-[8px] text-slate-450 dark:text-slate-500 mt-0.5 block">{new Date(orderTracking.createdAt).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <DeliveryTrackingUI order={orderTracking} />
               ) : (
                 <div className="bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700 p-8 rounded-3xl text-center text-slate-400 text-xs font-semibold">
                   Select an order on the left side to visualize tracking checkpoints.
@@ -954,7 +914,7 @@ const CustomerDashboard = () => {
               <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-rose-100 bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-rose-500 font-extrabold text-2xl">
                 {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : profileData.name?.charAt(0).toUpperCase()}
               </div>
-              <label className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-rose-650 hover:bg-rose-700 text-white flex items-center justify-center shadow-md cursor-pointer transition-transform hover:scale-105">
+              <label className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-md cursor-pointer transition-transform hover:scale-105">
                 <Camera size={12} />
                 <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
               </label>

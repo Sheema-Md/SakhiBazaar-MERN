@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { useCart } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { 
   Trash2, Plus, Minus, ArrowLeft, ShoppingBag, 
   CreditCard, Sparkles, Clock, ShoppingCart 
@@ -9,6 +10,7 @@ import {
 
 const Cart = () => {
   const { user } = useContext(AuthContext);
+  const { t } = useLanguage();
   const { 
     cartItems, 
     updateQuantity, 
@@ -44,7 +46,7 @@ const Cart = () => {
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
               <ShoppingBag className="text-rose-500" />
-              Your Shopping Cart
+              {t('shoppingCart') || 'Your Shopping Cart'}
             </h1>
             <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
               Manage your selections and support independent women entrepreneurs.
@@ -170,21 +172,21 @@ const Cart = () => {
             <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 rounded-3xl p-6 shadow-md h-fit space-y-6">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-50 dark:border-slate-750 pb-3 flex items-center gap-1.5">
                 <Sparkles size={16} className="text-yellow-500" />
-                Order Summary
+                {t('orderSummary') || 'Order Summary'}
               </h2>
 
               {/* Order breakdown */}
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between text-gray-500 dark:text-slate-400 font-medium">
-                  <span>Price ({itemsCount} items)</span>
+                  <span>{t('price') || 'Price'} ({itemsCount} {t('items') || 'items'})</span>
                   <span>₹{total.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between text-gray-500 dark:text-slate-400 font-medium">
-                  <span>GST (Estimated 5%)</span>
+                  <span>{t('gst') || 'GST (Estimated 5%)'}</span>
                   <span>₹{gst.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between text-gray-500 dark:text-slate-400 font-medium">
-                  <span>Shipping Fee</span>
+                  <span>{t('shipping') || 'Shipping Fee'}</span>
                   <span>
                     {shipping === 0 ? (
                       <span className="text-green-600 font-semibold">FREE</span>
@@ -201,7 +203,7 @@ const Cart = () => {
                 )}
                 
                 <div className="border-t border-gray-100 dark:border-slate-750 pt-3 flex justify-between items-baseline">
-                  <span className="text-base font-bold text-gray-900 dark:text-white">Total Amount</span>
+                  <span className="text-base font-bold text-gray-900 dark:text-white">{t('grandTotal') || 'Total Amount'}</span>
                   <span className="text-xl font-black text-rose-600 dark:text-rose-455">
                     ₹{grandTotal.toLocaleString('en-IN')}
                   </span>
@@ -214,7 +216,7 @@ const Cart = () => {
                 className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-rose-600 to-purple-650 hover:from-rose-700 hover:to-purple-700 text-white font-bold text-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
               >
                 <CreditCard size={18} />
-                Proceed to Checkout
+                {t('proceedToCheckout') || 'Proceed to Checkout'}
               </button>
 
               <div className="text-[11px] text-gray-400 text-center leading-relaxed">

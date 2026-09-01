@@ -77,7 +77,12 @@ const Chat = () => {
 
   // Fetch messages for active conversation
   useEffect(() => {
-    if (!activeConversation) return;
+    if (!activeConversation || !activeConversation._id) return;
+    // Don't call API if synthetic client-only ID
+    if (typeof activeConversation._id === 'string' && activeConversation._id.startsWith('conv_')) {
+      setMessages([]);
+      return;
+    }
 
     const fetchMessages = async () => {
       try {
@@ -95,6 +100,7 @@ const Chat = () => {
         );
       } catch (err) {
         console.error('Error fetching messages:', err);
+        setMessages([]);
       } finally {
         setLoadingMessages(false);
       }
@@ -135,12 +141,15 @@ const Chat = () => {
             };
             // Re-sort conversation list by latest message
             return updated.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+          } else {
+            // New conversation dynamically created. Fetch list from backend.
+            fetchConversations();
+            return prev;
           }
-          return prev;
         });
       }
 
-      // Always update conversations list with latest message preview
+      // Update conversations list with latest message preview
       setConversations((prev) =>
         prev.map((c) =>
           c._id === newMessage.conversationId
@@ -189,7 +198,8 @@ const Chat = () => {
       );
     } catch (err) {
       console.error('Failed to send message:', err);
-      alert('Failed to send message. Please verify backend is running.');
+      const msg = err.response?.data?.message || 'Failed to send message. Please try again.';
+      alert(msg);
     }
   };
 

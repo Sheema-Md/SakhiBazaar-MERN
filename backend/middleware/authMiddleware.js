@@ -25,21 +25,24 @@ const protect = async (req, res, next) => {
       next();
     } catch (error) {
       console.error(error);
-      res.status(401).json({ message: 'Not authorized, token failed' });
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token provided' });
+    return res.status(401).json({ message: 'Not authorized, no token provided' });
   }
 };
 
 // Middleware to check if user is a seller
 const seller = (req, res, next) => {
   if (req.user && req.user.role === 'seller') {
+    if (req.user.status !== 'approved') {
+      return res.status(403).json({ message: 'Access denied. Seller account vetting is pending or suspended.' });
+    }
     next();
   } else {
-    res.status(403).json({ message: 'Access denied. Seller role required.' });
+    return res.status(403).json({ message: 'Access denied. Seller role required.' });
   }
 };
 

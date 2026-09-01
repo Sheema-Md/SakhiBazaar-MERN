@@ -64,4 +64,8 @@ const orderSchema = new mongoose.Schema({
   },
 });
 
+// Define indexes for customer dashboard and seller fulfillment queries
+orderSchema.index({ customer: 1, createdAt: -1 });
+orderSchema.index({ orderStatus: 1 });
+
 module.exports = mongoose.model('Order', orderSchema);

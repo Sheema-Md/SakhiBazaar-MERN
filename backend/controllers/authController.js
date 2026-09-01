@@ -1,5 +1,42 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+
+// Helper to safely dispatch emails
+const sendEmailHelper = async (to, subject, text, html) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER || '',
+        pass: process.env.SMTP_PASS || '',
+      },
+    });
+
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.log(`\n======================================================`);
+      console.log(`[SMTP MOCK EMAIL] Transporter credentials not set in env.`);
+      console.log(`Dispatched to: ${to}`);
+      console.log(`Subject: ${subject}`);
+      console.log(`Body: ${text}`);
+      console.log(`======================================================\n`);
+      return;
+    }
+
+    const info = await transporter.sendMail({
+      from: `"Sakhi Bazaar" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      text,
+      html,
+    });
+    console.log('[SMTP LOG] Message sent successfully: %s', info.messageId);
+  } catch (err) {
+    console.error('[SMTP ERROR] Failed to dispatch email:', err.message);
+  }
+};
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -82,10 +119,27 @@ const registerUser = async (req, res) => {
       aadhaarNumber: aadhaarNumber || undefined,
       password,
       role: role || 'customer',
-      status: role === 'seller' ? 'pending' : 'approved',
+      status: 'approved',
     });
 
     if (user) {
+      // Dispatch welcome email
+      const welcomeHtml = `
+        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #f0e6e6; padding: 24px; border-radius: 16px; background-color: #ffffff;">
+          <h2 style="color: #e11d48; margin-top: 0; font-family: 'Outfit', sans-serif;">Welcome to Sakhi Bazaar, ${user.name}!</h2>
+          <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">Your account has been registered successfully as a <strong>${user.role}</strong>.</p>
+          <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">Discover beautiful, hand-crafted products and connect with amazing local creators.</p>
+          <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 20px 0;" />
+          <p style="color: #9ca3af; font-size: 11px; text-align: center;">This is an automated notification from Sakhi Bazaar.</p>
+        </div>
+      `;
+      sendEmailHelper(
+        user.email,
+        'Welcome to Sakhi Bazaar!',
+        `Welcome to Sakhi Bazaar, ${user.name}! Your account has been registered successfully as a ${user.role}.`,
+        welcomeHtml
+      );
+
       res.status(201).json({
         _id: user._id,
         name: user.name,
@@ -294,13 +348,34 @@ const forgotPassword = async (req, res) => {
     user.otp = { code: otpCode, expiresAt };
     await user.save();
 
-    // Log to console for dev workflow verification
+    // Send email with OTP code
+    const otpHtml = `
+      <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #f0e6e6; padding: 24px; border-radius: 16px; background-color: #ffffff;">
+        <h2 style="color: #e11d48; margin-top: 0;">Reset Your Password</h2>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.5;">You requested to reset your password. Use the following 6-digit verification code to proceed:</p>
+        <div style="background-color: #fcf6f6; border: 1px dashed #f43f5e; padding: 12px; border-radius: 8px; font-size: 24px; font-weight: 800; text-align: center; color: #e11d48; letter-spacing: 4px; margin: 20px 0;">
+          ${otpCode}
+        </div>
+        <p style="color: #4b5563; font-size: 12px; line-height: 1.5;">This code will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 20px 0;" />
+        <p style="color: #9ca3af; font-size: 11px; text-align: center;">This is an automated notification from Sakhi Bazaar platform.</p>
+      </div>
+    `;
+
+    // Always log to console as well for verification ease
     console.log(`\n======================================================`);
     console.log(`[AUTH SERVER OTP LOG] Reset OTP for: ${email}`);
     console.log(`[OTP CODE]: ${otpCode}`);
     console.log(`======================================================\n`);
 
-    res.json({ message: 'OTP sent successfully. Please check server console logs.' });
+    await sendEmailHelper(
+      user.email,
+      'Sakhi Bazaar - Password Reset Code',
+      `Your password reset code is ${otpCode}. It expires in 10 minutes.`,
+      otpHtml
+    );
+
+    res.json({ message: 'OTP sent successfully. Please check your email inbox (or server console logs).' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

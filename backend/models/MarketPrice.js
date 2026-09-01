@@ -31,6 +31,13 @@ const marketPriceSchema = new mongoose.Schema({
     type: [Number],
     default: [],
   },
+  seasonalPricing: [
+    {
+      season: { type: String, required: true },
+      multiplier: { type: Number, required: true },
+      avgPrice: { type: Number, required: true }
+    }
+  ],
   updatedAt: {
     type: Date,
     default: Date.now,

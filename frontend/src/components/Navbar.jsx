@@ -42,12 +42,20 @@ const Navbar = () => {
               >
                 <option value="en">EN</option>
                 <option value="hi">हिन्दी</option>
+                <option value="te">తెలుగు</option>
+                <option value="ta">தமிழ்</option>
+                <option value="kn">ಕನ್ನಡ</option>
+                <option value="ml">മലയാളം</option>
+                <option value="mr">मराठी</option>
+                <option value="bn">বাংলা</option>
+                <option value="gu">ગુજરાતી</option>
+                <option value="pa">ਪੰਜਾਬੀ</option>
               </select>
             </div>
 
             <Link 
               to="/" 
-              className="text-gray-600 hover:text-rose-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold transition-colors"
             >
               {t('browse')}
             </Link>
@@ -55,21 +63,21 @@ const Navbar = () => {
             {user && (
               <Link 
                 to="/chat" 
-                className="text-gray-600 hover:text-rose-600 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
+                className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
               >
-                <MessageSquare size={16} />
+                <MessageSquare size={18} />
                 <span>{t('inbox')}</span>
               </Link>
             )}
 
             <Link 
               to="/cart" 
-              className="text-gray-600 hover:text-rose-600 p-2 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors relative"
+              className="text-gray-800 dark:text-white hover:text-rose-600 p-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors relative"
               title={t('shoppingCart')}
             >
-              <ShoppingCart size={18} />
+              <ShoppingCart size={20} />
               {getCartCount() > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-rose-600 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-bounce shadow-sm border border-white">
+                <span className="absolute -top-0.5 -right-0.5 bg-rose-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce shadow-sm border border-white">
                   {getCartCount()}
                 </span>
               )}
@@ -81,16 +89,16 @@ const Navbar = () => {
                   <>
                     <Link 
                       to="/dashboard" 
-                      className="text-gray-600 hover:text-rose-600 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
+                      className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
                     >
-                      <LayoutDashboard size={16} />
+                      <LayoutDashboard size={18} />
                       <span>{t('dashboard')}</span>
                     </Link>
                     <Link 
                       to="/add-product" 
-                      className="bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
+                      className="bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
                     >
-                      <PlusCircle size={16} />
+                      <PlusCircle size={18} />
                       <span>{t('addProduct')}</span>
                     </Link>
                   </>
@@ -99,33 +107,33 @@ const Navbar = () => {
                 {user.role === 'customer' && (
                   <Link 
                     to="/customer-dashboard" 
-                    className="text-gray-600 hover:text-rose-600 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
+                    className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
                   >
-                    <LayoutDashboard size={16} />
+                    <LayoutDashboard size={18} />
                     <span>{t('dashboard')}</span>
                   </Link>
                 )}
 
                 {user.role === 'admin' && (
-                  <Link 
-                    to="/admin-dashboard" 
-                    className="text-gray-600 hover:text-rose-600 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors"
+                  <a 
+                    href="http://localhost:5174" 
+                    className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
                   >
-                    <LayoutDashboard size={16} />
+                    <LayoutDashboard size={18} />
                     <span>{t('dashboard')}</span>
-                  </Link>
+                  </a>
                 )}
 
                 {/* Profile indicator */}
-                <div className="flex items-center space-x-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full">
-                  <div className="w-6 h-6 rounded-full bg-rose-200 flex items-center justify-center text-xs font-semibold text-rose-800">
+                <div className="flex items-center space-x-2 px-3.5 py-1.5 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-full">
+                  <div className="w-7 h-7 rounded-full bg-rose-200 flex items-center justify-center text-xs font-bold text-rose-900">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="hidden sm:flex flex-col text-left">
-                    <span className="text-xs font-semibold text-gray-800 truncate max-w-[100px]">
+                    <span className="text-xs font-extrabold text-gray-900 dark:text-white truncate max-w-[110px]">
                       {user.name}
                     </span>
-                    <span className="text-[10px] text-gray-500 capitalize leading-none">
+                    <span className="text-[10px] font-bold text-gray-500 capitalize leading-none">
                       {user.role}
                     </span>
                   </div>
@@ -134,23 +142,23 @@ const Navbar = () => {
                 {/* Logout Button */}
                 <button
                   onClick={handleLogout}
-                  className="text-gray-500 hover:text-red-600 p-2 rounded-lg transition-colors"
+                  className="text-gray-600 dark:text-slate-300 hover:text-red-600 p-2 rounded-lg transition-colors cursor-pointer"
                   title={t('logout')}
                 >
-                  <LogOut size={18} />
+                  <LogOut size={20} />
                 </button>
               </>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 <Link
                   to="/login"
-                  className="text-gray-600 hover:text-rose-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className="text-gray-800 dark:text-white hover:text-rose-600 px-3.5 py-2 rounded-lg text-base font-bold transition-colors"
                 >
                   {t('login')}
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-gradient-to-r from-rose-500 to-purple-600 hover:from-rose-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md shadow-rose-200 transition-all duration-300 hover:shadow-lg transform active:scale-95"
+                  className="bg-gradient-to-r from-rose-500 to-purple-600 hover:from-rose-600 hover:to-purple-700 text-white px-4 py-2 rounded-xl text-base font-bold shadow-md shadow-rose-200 transition-all duration-300 hover:shadow-lg transform active:scale-95"
                 >
                   {t('register')}
                 </Link>

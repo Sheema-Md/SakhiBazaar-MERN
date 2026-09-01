@@ -25,4 +25,19 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor to handle expired or deleted user tokens
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      const msg = error.response.data?.message || '';
+      if (msg.includes('user not found') || msg.includes('token failed') || msg.includes('jwt expired')) {
+        console.warn('Stale or invalid token detected. Clearing localStorage session...');
+        localStorage.removeItem('sakhi_user');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

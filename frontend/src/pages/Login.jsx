@@ -17,7 +17,9 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin') navigate('/admin-dashboard');
+      if (user.role === 'admin') {
+        window.location.href = 'http://localhost:5174/login';
+      }
       else if (user.role === 'seller') navigate('/dashboard');
       else navigate('/customer-dashboard');
     }
@@ -46,7 +48,10 @@ const Login = () => {
       const stored = localStorage.getItem('sakhi_user');
       if (stored) {
         const loggedUser = JSON.parse(stored);
-        if (loggedUser.role === 'seller') navigate('/dashboard');
+        if (loggedUser.role === 'admin') {
+          window.location.href = 'http://localhost:5174/login';
+        }
+        else if (loggedUser.role === 'seller') navigate('/dashboard');
         else navigate('/customer-dashboard');
       }
     } else {

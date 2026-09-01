@@ -8,7 +8,7 @@ import { useSocket } from '../context/SocketContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import {
-  Bell, Sun, Moon, LogOut, User, Settings, Globe, ShoppingBag, ShoppingCart, Menu, ChevronDown, Heart, Search
+  Bell, Sun, Moon, LogOut, User, Settings, Globe, ShoppingBag, ShoppingCart, Menu, ChevronDown, Heart, Search, LayoutDashboard
 } from 'lucide-react';
 
 const Header = ({ onMenuClick }) => {
@@ -83,6 +83,40 @@ const Header = ({ onMenuClick }) => {
     }
   }, [socket]);
 
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.notification-btn-container')) {
+        setIsNotificationsOpen(false);
+      }
+      if (!e.target.closest('.profile-btn-container')) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, []);
+
+  const handleNotificationClick = (notification) => {
+    setIsNotificationsOpen(false);
+    const txt = (notification.text || '').toLowerCase();
+    if (txt.includes('chat') || txt.includes('message')) {
+      navigate('/chat');
+    } else if (txt.includes('order') || txt.includes('sale') || txt.includes('purchased') || txt.includes('placed')) {
+      if (user?.role === 'seller') {
+        navigate('/dashboard?view=orders');
+      } else {
+        navigate('/customer-dashboard?view=orders');
+      }
+    } else if (txt.includes('vetting') || txt.includes('approved') || txt.includes('status')) {
+      if (user?.role === 'seller') {
+        navigate('/dashboard?view=profile');
+      } else {
+        navigate('/customer-dashboard?view=profile');
+      }
+    }
+  };
+
   const handleMarkAllRead = async () => {
     if (user && user.token) {
       try {
@@ -137,10 +171,10 @@ const Header = ({ onMenuClick }) => {
               </button>
             )}
             <Link to={getDashboardLink()} className="flex items-center space-x-2 group">
-              <div className="p-2 bg-gradient-to-tr from-rose-500 to-indigo-650 rounded-xl text-white shadow-md transition-transform group-hover:scale-105">
-                <ShoppingBag size={18} />
+              <div className="p-2.5 bg-gradient-to-tr from-rose-500 to-indigo-650 rounded-xl text-white shadow-md transition-transform group-hover:scale-105">
+                <ShoppingBag size={22} />
               </div>
-              <span className="text-lg font-bold bg-gradient-to-r from-rose-600 to-purple-600 dark:from-rose-400 dark:to-purple-400 bg-clip-text text-transparent">
+              <span className="text-xl sm:text-2xl font-black bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 dark:from-rose-400 dark:to-purple-400 bg-clip-text text-transparent tracking-tight">
                 Sakhi Bazaar
               </span>
             </Link>
@@ -148,7 +182,7 @@ const Header = ({ onMenuClick }) => {
 
           {/* Global Search Bar (Hidden for sellers) */}
           {!isSeller && (
-            <div className="relative flex-1 max-w-xs mx-4 hidden sm:block">
+            <div className="relative flex-1 max-w-sm mx-6 hidden sm:block">
               <div className="relative">
                 <input
                   type="text"
@@ -166,14 +200,14 @@ const Header = ({ onMenuClick }) => {
                     }
                   }}
                   placeholder="Search products, crafts..."
-                  className="w-full pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none text-slate-800 dark:text-slate-100"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 text-sm font-semibold rounded-2xl focus:ring-2 focus:ring-rose-500 focus:outline-none text-slate-900 dark:text-white"
                 />
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               </div>
 
               {/* Suggestions Dropdown */}
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute left-0 mt-1.5 w-full bg-white dark:bg-slate-800 border border-rose-100/50 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden z-50 animate-fadeIn">
+                <div className="absolute left-0 mt-2 w-full bg-white dark:bg-slate-800 border border-rose-100/50 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 animate-fadeIn">
                   <div className="divide-y divide-rose-50 dark:divide-slate-700">
                     {suggestions.slice(0, 5).map((item) => (
                       <Link
@@ -183,12 +217,12 @@ const Header = ({ onMenuClick }) => {
                           setSearchQuery('');
                           setShowSuggestions(false);
                         }}
-                        className="flex items-center gap-3 p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                        className="flex items-center gap-3 p-3 hover:bg-rose-50/50 dark:hover:bg-slate-700/30 transition-colors"
                       >
-                        <img src={item.imageUrl} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                        <img src={item.imageUrl} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{item.title}</p>
-                          <p className="text-[10px] text-slate-450 dark:text-slate-500 capitalize">{item.category} • ₹{item.price}</p>
+                          <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{item.title}</p>
+                          <p className="text-xs text-slate-450 dark:text-slate-400 capitalize">{item.category} • ₹{item.price}</p>
                         </div>
                       </Link>
                     ))}
@@ -199,13 +233,13 @@ const Header = ({ onMenuClick }) => {
           )}
 
           {/* Center Navigation Links (Hidden for sellers/logged out) */}
-          <nav className="hidden md:flex space-x-6 text-sm font-semibold">
+          <nav className="hidden md:flex space-x-6 text-base font-extrabold">
             {isCustomer && (
               <>
-                <Link to="/customer-dashboard?view=browse" className="text-slate-650 dark:text-slate-350 hover:text-rose-605 dark:hover:text-rose-400 transition-colors">
+                <Link to="/customer-dashboard?view=browse" className="text-slate-800 dark:text-white hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
                   {t('browse') || 'Browse'}
                 </Link>
-                <Link to="/chat" className="text-slate-650 dark:text-slate-355 hover:text-rose-605 dark:hover:text-rose-400 transition-colors">
+                <Link to="/chat" className="text-slate-800 dark:text-white hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
                   Inbox
                 </Link>
               </>
@@ -249,7 +283,7 @@ const Header = ({ onMenuClick }) => {
 
             {/* Notifications (Logged In only) */}
             {isLoggedIn && (
-              <div className="relative">
+              <div className="relative notification-btn-container">
                 <button
                   onClick={() => {
                     setIsNotificationsOpen(!isNotificationsOpen);
@@ -282,7 +316,8 @@ const Header = ({ onMenuClick }) => {
                         notifications.map((n) => (
                           <div
                             key={n._id}
-                            className={`p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/30 ${
+                            onClick={() => handleNotificationClick(n)}
+                            className={`p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/30 cursor-pointer ${
                               n.unread ? 'bg-rose-50/10 dark:bg-slate-800/50 border-l-2 border-rose-500' : ''
                             }`}
                           >
@@ -335,7 +370,7 @@ const Header = ({ onMenuClick }) => {
 
             {/* Profile Dropdown (Logged In only) */}
             {isLoggedIn && (
-              <div className="relative">
+              <div className="relative profile-btn-container">
                 <button
                   onClick={() => {
                     setIsProfileOpen(!isProfileOpen);
@@ -392,22 +427,35 @@ const Header = ({ onMenuClick }) => {
                       ) : (
                         // For customers/admins
                         <>
-                          <Link
-                            to={`${getDashboardLink()}?view=profile`}
-                            onClick={() => setIsProfileOpen(false)}
-                            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-655 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium"
-                          >
-                            <User size={14} />
-                            <span>View Profile</span>
-                          </Link>
-                          <Link
-                            to={`${getDashboardLink()}?view=settings`}
-                            onClick={() => setIsProfileOpen(false)}
-                            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-655 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium"
-                          >
-                            <Settings size={14} />
-                            <span>Settings</span>
-                          </Link>
+                          {user.role === 'admin' ? (
+                            <a
+                              href="http://localhost:5174"
+                              onClick={() => setIsProfileOpen(false)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-655 dark:text-slate-300 hover:bg-slate-55 dark:hover:bg-slate-700 transition-colors font-medium"
+                            >
+                              <LayoutDashboard size={14} />
+                              <span>Admin Panel</span>
+                            </a>
+                          ) : (
+                            <>
+                              <Link
+                                to={`${getDashboardLink()}?view=profile`}
+                                onClick={() => setIsProfileOpen(false)}
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-655 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium"
+                              >
+                                <User size={14} />
+                                <span>View Profile</span>
+                              </Link>
+                              <Link
+                                to={`${getDashboardLink()}?view=settings`}
+                                onClick={() => setIsProfileOpen(false)}
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-655 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium"
+                              >
+                                <Settings size={14} />
+                                <span>Settings</span>
+                              </Link>
+                            </>
+                          )}
                         </>
                       )}
                       

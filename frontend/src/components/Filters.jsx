@@ -69,7 +69,7 @@ const Filters = ({
       {/* 1. Search Bar */}
       <div>
         <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">
-          Search
+          {t('search') || 'Search'}
         </label>
         <div className="relative">
           <input
@@ -87,7 +87,7 @@ const Filters = ({
       {categories.length > 0 && (
         <div>
           <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">
-            Category
+            {t('category') || 'Category'}
           </label>
           <div className="relative">
             <select
@@ -97,7 +97,7 @@ const Filters = ({
             >
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
-                  {cat}
+                  {t(cat.toLowerCase()) || cat}
                 </option>
               ))}
             </select>
@@ -109,7 +109,7 @@ const Filters = ({
       {/* 3. Price Range */}
       <div>
         <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">
-          Price Range
+          {t('priceRange') || 'Price Range'}
         </label>
         <div className="grid grid-cols-2 gap-2">
           <div className="relative">
@@ -117,7 +117,7 @@ const Filters = ({
               type="number"
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
-              placeholder="Min"
+              placeholder={t('min') || 'Min'}
               className="w-full pl-6 pr-2 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:ring-rose-500 focus:outline-none"
             />
             <DollarSign size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -127,7 +127,7 @@ const Filters = ({
               type="number"
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
-              placeholder="Max"
+              placeholder={t('max') || 'Max'}
               className="w-full pl-6 pr-2 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:ring-rose-500 focus:outline-none"
             />
             <DollarSign size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -139,17 +139,17 @@ const Filters = ({
       {showStatusFilter && statuses.length > 0 && (
         <div>
           <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">
-            Status
+            {t('status') || 'Status'}
           </label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:ring-rose-500 focus:outline-none cursor-pointer"
+            className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:ring-rose-500 focus:border-rose-500 focus:outline-none cursor-pointer"
           >
-            <option value="All">All Statuses</option>
+            <option value="All">{t('allStatuses') || 'All Statuses'}</option>
             {statuses.map((st) => (
               <option key={st} value={st}>
-                {st.charAt(0).toUpperCase() + st.slice(1)}
+                {t(st.toLowerCase()) || st.charAt(0).toUpperCase() + st.slice(1)}
               </option>
             ))}
           </select>
@@ -160,7 +160,7 @@ const Filters = ({
       {showDateFilter && (
         <div>
           <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">
-            Date Range
+            {t('dateRange') || 'Date Range'}
           </label>
           <div className="grid grid-cols-2 gap-2">
             <div className="relative">
@@ -186,16 +186,16 @@ const Filters = ({
       {/* 6. Sort Options */}
       <div>
         <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">
-          Sort Options
+          {t('sortOptions') || 'Sort Options'}
         </label>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:ring-rose-500 focus:outline-none cursor-pointer"
+          className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl text-xs focus:ring-rose-500 focus:border-rose-500 focus:outline-none cursor-pointer"
         >
           {sortOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {t(opt.value) || opt.label}
             </option>
           ))}
         </select>
@@ -207,7 +207,7 @@ const Filters = ({
         onClick={handleClear}
         className="w-full py-2.5 border border-dashed border-slate-200 dark:border-slate-700 hover:border-rose-300 hover:text-rose-500 text-slate-500 dark:text-slate-400 text-xs font-bold rounded-xl transition-all cursor-pointer"
       >
-        Clear Filters
+        {t('clearFilters') || 'Clear Filters'}
       </button>
     </div>
   );
@@ -221,7 +221,7 @@ const Filters = ({
           className="flex items-center justify-center gap-2 w-full py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-350 text-xs font-bold rounded-xl shadow-xs"
         >
           <SlidersHorizontal size={14} />
-          Filter & Sort Options
+          {t('filterSortOptions') || 'Filter & Sort Options'}
         </button>
       </div>
 
@@ -229,7 +229,7 @@ const Filters = ({
       <div className="hidden md:block bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700 p-6 rounded-3xl shadow-sm h-fit">
         <div className="flex items-center gap-2 mb-6 border-b border-rose-50/50 dark:border-slate-700 pb-3">
           <SlidersHorizontal size={16} className="text-rose-500" />
-          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Filters</h2>
+          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">{t('filters') || 'Filters'}</h2>
         </div>
         {renderFiltersForm()}
       </div>
@@ -249,7 +249,7 @@ const Filters = ({
               <div className="flex justify-between items-center mb-6 pb-3 border-b border-rose-50/50 dark:border-slate-700">
                 <div className="flex items-center gap-2">
                   <SlidersHorizontal size={16} className="text-rose-500" />
-                  <span className="font-bold text-sm text-slate-800 dark:text-slate-100">Filter Products</span>
+                  <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{t('filterProducts') || 'Filter Products'}</span>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
@@ -265,7 +265,7 @@ const Filters = ({
               onClick={() => setIsOpen(false)}
               className="mt-8 w-full py-3 bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-750 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
             >
-              Apply Filters
+              {t('applyFilters') || 'Apply Filters'}
             </button>
           </div>
         </div>

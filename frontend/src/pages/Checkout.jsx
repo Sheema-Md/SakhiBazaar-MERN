@@ -1,5 +1,5 @@
 import { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
@@ -11,13 +11,21 @@ import { Elements } from '@stripe/react-stripe-js';
 import StripePaymentForm from '../components/StripePaymentForm';
 
 // Initialize Stripe Promise
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51ToKSBFzmY01c2n8SpmlyqjM5IEa2GzNYumaSCaGqWOlJYfpVHF1q5UFygBtpcurLcgoaeiBxxqJOBcE1QMY67aa00kYQnVA3Z');
 
 const Checkout = () => {
   const { cartItems, getCartTotal, getCartCount, clearCart } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { user } = useContext(AuthContext);
+
+  const directBuyItem = location.state?.directBuyItem; // Object like { product: {...}, quantity: 1 }
+
+  // Use direct buy item if available, otherwise default to cart items
+  const checkoutItems = directBuyItem
+    ? [{ product: directBuyItem.product, quantity: directBuyItem.quantity }]
+    : cartItems;
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -32,9 +40,16 @@ const Checkout = () => {
   const [createdOrderId, setCreatedOrderId] = useState(null);
   const [stripeClientSecret, setStripeClientSecret] = useState(null);
   const [paymentError, setPaymentError] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('stripe'); // 'stripe' or 'cod'
 
-  const total = getCartTotal();
-  const itemsCount = getCartCount();
+  const total = directBuyItem
+    ? directBuyItem.product.price * directBuyItem.quantity
+    : getCartTotal();
+
+  const itemsCount = directBuyItem
+    ? directBuyItem.quantity
+    : getCartCount();
+
   const shipping = total > 1000 ? 0 : total === 0 ? 0 : 99;
   const gst = Math.round(total * 0.05);
   const grandTotal = total + shipping + gst;
@@ -46,7 +61,7 @@ const Checkout = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (cartItems.length === 0) return;
+    if (checkoutItems.length === 0) return;
 
     setSubmitting(true);
     setPaymentError(null);
@@ -54,13 +69,13 @@ const Checkout = () => {
     try {
       const addressString = `${formData.name}, Address: ${formData.address}, City: ${formData.city}, State: ${formData.state}, ZIP: ${formData.zip}, Country: ${formData.country}`;
       
-      const orderProducts = cartItems.map(item => ({
+      const orderProducts = checkoutItems.map(item => ({
         product: item.product._id,
         quantity: item.quantity,
         price: item.product.price
       }));
 
-      // 1. Create pending order on the backend
+      // 1. Create order on backend
       const res = await api.post('/orders', {
         products: orderProducts,
         totalAmount: grandTotal,
@@ -70,7 +85,21 @@ const Checkout = () => {
       const orderData = res.data;
       setCreatedOrderId(orderData._id);
 
-      // 2. Fetch Stripe PaymentIntent clientSecret from payment controller
+      if (paymentMethod === 'cod') {
+        // Direct cash on delivery / test payment success
+        if (!directBuyItem) {
+          await clearCart();
+        }
+        navigate('/order-success', {
+          state: {
+            orderId: orderData._id,
+            name: formData.name,
+          },
+        });
+        return;
+      }
+
+      // 2. Fetch Stripe PaymentIntent clientSecret for real-time Stripe loading
       const intentRes = await api.post('/payments/create-intent', {
         orderId: orderData._id
       });
@@ -78,7 +107,7 @@ const Checkout = () => {
       setStripeClientSecret(intentRes.data.clientSecret);
     } catch (err) {
       console.error('Checkout creation error:', err);
-      alert(err.response?.data?.message || 'Checkout initiation failed. Please try again.');
+      setPaymentError(err.response?.data?.message || 'Checkout initiation failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -86,8 +115,10 @@ const Checkout = () => {
 
   const handlePaymentSuccess = async () => {
     try {
-      // Clear cart state
-      await clearCart();
+      // Clear cart state only if NOT a direct buy
+      if (!directBuyItem) {
+        await clearCart();
+      }
 
       // Navigate to order-success page passing backend order ID and shipping name
       navigate('/order-success', {
@@ -105,7 +136,7 @@ const Checkout = () => {
     setPaymentError(errorMsg);
   };
 
-  if (cartItems.length === 0) {
+  if (checkoutItems.length === 0) {
     return (
       <div className="max-w-md mx-auto my-12 text-center p-8 bg-white border border-gray-100 rounded-2xl shadow-sm">
         <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-4">
@@ -287,7 +318,7 @@ const Checkout = () => {
                 Order Review ({itemsCount} items)
               </h3>
               <div className="max-h-[160px] overflow-y-auto divide-y divide-gray-50 pr-1">
-                {cartItems.map((item) => (
+                {checkoutItems.map((item) => (
                   <div key={item.product._id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2 min-w-0">
                       <img
@@ -329,14 +360,51 @@ const Checkout = () => {
                 </div>
               </div>
 
+              {/* Payment Method Selector */}
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Select Payment Method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod('stripe');
+                      setPaymentError(null);
+                    }}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${
+                      paymentMethod === 'stripe'
+                        ? 'bg-rose-50 border-rose-600 text-rose-700 shadow-xs'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <CreditCard size={16} />
+                    <span>Stripe Card</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod('cod');
+                      setPaymentError(null);
+                    }}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${
+                      paymentMethod === 'cod'
+                        ? 'bg-rose-50 border-rose-600 text-rose-700 shadow-xs'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ShieldCheck size={16} />
+                    <span>CoD / Test UPI</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Secure guarantee indicator */}
               <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl text-[11px] text-green-800 font-medium leading-none">
                 <ShieldCheck size={16} className="text-green-600 shrink-0" />
-                Secure connection. Stripe payment processed.
+                {paymentMethod === 'stripe' ? 'Real-time encrypted Stripe card processing' : 'Pay cash on delivery or instant test confirmation'}
               </div>
 
-              {stripeClientSecret ? (
-                <div className="space-y-4 pt-2">
+              {paymentMethod === 'stripe' && stripeClientSecret ? (
+                <div className="space-y-4 pt-2 animate-fadeIn">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Secure Card Details</h4>
                   <Elements stripe={stripePromise} options={{ clientSecret: stripeClientSecret }}>
                     <StripePaymentForm
@@ -352,14 +420,23 @@ const Checkout = () => {
                   )}
                 </div>
               ) : (
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-700 hover:to-purple-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-rose-200/50 hover:shadow-xl hover:shadow-rose-200/80 transition-all duration-200 cursor-pointer disabled:opacity-50"
-                >
-                  <CreditCard size={18} />
-                  {submitting ? 'Redirecting to Payment...' : 'Proceed to Pay'}
-                </button>
+                <div className="space-y-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-700 hover:to-purple-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-rose-200/50 hover:shadow-xl hover:shadow-rose-200/80 transition-all duration-200 cursor-pointer disabled:opacity-50"
+                  >
+                    <CreditCard size={18} />
+                    {submitting
+                      ? 'Initializing Secure Payment...'
+                      : paymentMethod === 'stripe'
+                      ? 'Proceed to Card Payment'
+                      : 'Place Order (Cash on Delivery)'}
+                  </button>
+                  {paymentError && (
+                    <p className="text-xs font-semibold text-red-500 text-center">{paymentError}</p>
+                  )}
+                </div>
               )}
             </div>
 

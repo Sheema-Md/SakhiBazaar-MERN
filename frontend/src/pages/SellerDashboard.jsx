@@ -806,9 +806,9 @@ const SellerDashboard = () => {
       {currentView === 'dashboard' && (
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-rose-500 to-indigo-650 p-6 sm:p-8 rounded-3xl text-white shadow-md">
-            <h1 className="text-xl sm:text-2xl font-black">Welcome back, {profileData.name || user?.name || 'Seller'}!</h1>
+            <h1 className="text-xl sm:text-2xl font-black">{t('hello') || 'Welcome back'}, {profileData.name || user?.name || 'Seller'}!</h1>
             <p className="text-xs text-rose-100 mt-1 max-w-sm">
-              Sakhi Bazaar partner dashboard. Showcase products, optimize margins, and generate marketing copy.
+              {t('welcomeDashboard') || 'Sakhi Bazaar partner dashboard. Showcase products, optimize margins, and generate marketing copy.'}
             </p>
           </div>
 
@@ -818,7 +818,7 @@ const SellerDashboard = () => {
                 <ShoppingBag size={22} />
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">Listed Products</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">{t('myProducts') || 'Listed Products'}</p>
                 <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-0.5">{products.length}</h3>
               </div>
             </div>
@@ -828,9 +828,9 @@ const SellerDashboard = () => {
                 <CheckCircle size={22} />
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">Fulfill Orders</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">{t('ordersFulfilled') || 'Fulfill Orders'}</p>
                 <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-0.5">
-                  {orders.filter(o => o.orderStatus !== 'Delivered' && o.orderStatus !== 'Cancelled').length} Active
+                  {orders.filter(o => o.orderStatus !== 'Delivered' && o.orderStatus !== 'Cancelled').length} {t('active') || 'Active'}
                 </h3>
               </div>
             </div>
@@ -840,7 +840,7 @@ const SellerDashboard = () => {
                 <DollarSign size={22} />
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">Earnings Balance</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">{t('salesRevenue') || 'Earnings Balance'}</p>
                 <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-0.5">
                   ₹{orders.reduce((acc, o) => acc + o.totalAmount, 0).toLocaleString('en-IN')}
                 </h3>
@@ -909,14 +909,14 @@ const SellerDashboard = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-rose-100/30 dark:border-slate-700">
             <div>
-              <h1 className="text-base font-bold text-slate-800 dark:text-white">Active Catalog Inventory</h1>
+              <h1 className="text-base font-bold text-slate-800 dark:text-white">{t('myProducts') || 'Active Catalog Inventory'}</h1>
               <p className="text-xs text-slate-400 mt-0.5">Review, modify, or list new catalog options.</p>
             </div>
             <button
               onClick={() => setSearchParams({ view: 'add-product' })}
               className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-rose-500 to-indigo-650 hover:from-rose-600 hover:to-indigo-700 shadow-md cursor-pointer"
             >
-              Add Product
+              {t('addProduct') || 'Add Product'}
             </button>
           </div>
 
@@ -1866,7 +1866,7 @@ const SellerDashboard = () => {
               <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-rose-100 bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-rose-500 font-extrabold text-2xl">
                 {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : profileData.name?.charAt(0).toUpperCase()}
               </div>
-              <label className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-rose-650 hover:bg-rose-700 text-white flex items-center justify-center shadow-md cursor-pointer transition-transform hover:scale-105">
+              <label className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-md cursor-pointer transition-transform hover:scale-105">
                 <Camera size={12} />
                 <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
               </label>

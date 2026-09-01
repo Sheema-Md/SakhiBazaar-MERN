@@ -6,9 +6,11 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useLanguage } from '../context/LanguageContext';
 import ProductCard from '../components/ProductCard';
+import SeasonalPricingGuide from '../components/SeasonalPricingGuide';
 import {
   ArrowLeft, Sparkles, User, Tag, Mail, Copy, Check,
-  MessageSquare, ShoppingCart, Heart, Globe, Star, MapPin, ChevronLeft, ChevronRight
+  MessageSquare, ShoppingCart, Heart, Globe, Star, MapPin, ChevronLeft, ChevronRight,
+  RefreshCw
 } from 'lucide-react';
 
 const DELIVERY_LOCATIONS = {
@@ -66,8 +68,52 @@ const ProductDetails = () => {
   // Review states
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  const [reviewImages, setReviewImages] = useState([]);
+  const [reviewVideos, setReviewVideos] = useState([]);
   const [reviewError, setReviewError] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState('');
+
+  // AI Translation States
+  const [translatedTitle, setTranslatedTitle] = useState('');
+  const [translatedDesc, setTranslatedDesc] = useState('');
+  const [translatedReviews, setTranslatedReviews] = useState({});
+  const [translating, setTranslating] = useState(false);
+  const { language } = useLanguage();
+
+  const handleTranslateDetails = async () => {
+    if (!product || translating) return;
+    setTranslating(true);
+    try {
+      const [titleRes, descRes] = await Promise.all([
+        api.post('/ai/translate', { text: product.title, targetLanguage: language }),
+        api.post('/ai/translate', { text: product.description, targetLanguage: language })
+      ]);
+      setTranslatedTitle(titleRes.data.translatedText);
+      setTranslatedDesc(descRes.data.translatedText);
+
+      // Translate reviews if present
+      if (product.reviews && product.reviews.length > 0) {
+        const reviewMap = {};
+        await Promise.all(
+          product.reviews.map(async (r) => {
+            if (r.comment) {
+              try {
+                const res = await api.post('/ai/translate', { text: r.comment, targetLanguage: language });
+                reviewMap[r._id] = res.data.translatedText;
+              } catch (e) {
+                console.error(e);
+              }
+            }
+          })
+        );
+        setTranslatedReviews(reviewMap);
+      }
+    } catch (err) {
+      console.error('Failed to translate details using AI:', err);
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -83,12 +129,15 @@ const ProductDetails = () => {
 
   const handleBuyNow = () => {
     if (!product) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     const productWithChoices = {
       ...product,
       title: `${product.title}${selectedSize ? ` (${selectedSize})` : ''}${selectedColor ? ` [${selectedColor}]` : ''}${selectedWeight ? ` (${selectedWeight})` : ''}`
     };
-    addToCart(productWithChoices, 1);
-    navigate('/cart');
+    navigate('/checkout', { state: { directBuyItem: { product: productWithChoices, quantity: 1 } } });
   };
 
   const handleStartChat = async () => {
@@ -136,6 +185,8 @@ const ProductDetails = () => {
     const runAsync = async () => {
       await Promise.resolve();
       setLoading(true);
+      setTranslatedTitle('');
+      setTranslatedDesc('');
       fetchProduct();
     };
     runAsync();
@@ -190,14 +241,26 @@ const ProductDetails = () => {
     e.preventDefault();
     setReviewError('');
     setReviewSuccess('');
+
+    const formData = new FormData();
+    formData.append('rating', reviewRating);
+    formData.append('comment', reviewComment);
+    for (let i = 0; i < reviewImages.length; i++) {
+      formData.append('images', reviewImages[i]);
+    }
+    for (let i = 0; i < reviewVideos.length; i++) {
+      formData.append('videos', reviewVideos[i]);
+    }
+
     try {
-      await api.post(`/products/${id}/review`, {
-        rating: reviewRating,
-        comment: reviewComment
+      await api.post(`/products/${id}/review`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       setReviewSuccess('Review posted successfully!');
       setReviewComment('');
       setReviewRating(5);
+      setReviewImages([]);
+      setReviewVideos([]);
       fetchProduct(); // reload product and reviews list
     } catch (err) {
       setReviewError(err.response?.data?.message || 'Failed to post review. You might have already reviewed this item.');
@@ -249,10 +312,10 @@ const ProductDetails = () => {
         {/* Back navigation */}
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-gray-500 hover:text-rose-650 font-semibold text-sm transition-colors mb-6"
+          className="flex items-center gap-1.5 text-gray-500 hover:text-rose-655 font-semibold text-sm transition-colors mb-6"
         >
           <ArrowLeft size={16} />
-          Back
+          {t('back') || 'Back'}
         </button>
 
         {/* Product Grid */}
@@ -316,7 +379,7 @@ const ProductDetails = () => {
               <div>
                 <div className="flex justify-between items-start gap-4">
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
-                    {product.title}
+                    {translatedTitle || product.title}
                   </h1>
                   {user && user._id !== product.seller?._id && (
                     <button
@@ -517,8 +580,29 @@ const ProductDetails = () => {
                     {t('productDescription')}
                   </h3>
                   <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    {product.description}
+                    {translatedDesc || product.description}
                   </p>
+
+                  {/* AI Translation Widget */}
+                  {language !== 'en' && !translatedDesc && (
+                    <button
+                      onClick={handleTranslateDetails}
+                      disabled={translating}
+                      className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-50 to-rose-50 dark:from-purple-950/20 dark:to-rose-950/20 hover:from-purple-100 hover:to-rose-100 border border-purple-100 dark:border-purple-900/40 text-purple-700 dark:text-purple-400 text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                    >
+                      {translating ? (
+                        <>
+                          <RefreshCw size={12} className="animate-spin" />
+                          Translating with AI...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={12} />
+                          Translate details to {language.toUpperCase()}
+                        </>
+                      )}
+                    </button>
+                  )}
                   
                   {/* Market Price Awareness Widget - Only for Sellers */}
                   {user && user.role === 'seller' && (
@@ -610,6 +694,9 @@ const ProductDetails = () => {
                   </p>
                 </div>
               </div>
+
+              {/* Seasonal Market Pricing Calculator Widget */}
+              <SeasonalPricingGuide basePrice={product.price} category={product.category} />
 
               {/* Add to Cart & Buy Now action buttons */}
               {(!user || user._id !== product.seller?._id) && (
@@ -722,7 +809,21 @@ const ProductDetails = () => {
                           <Star key={star} size={14} className={star <= rev.rating ? 'fill-yellow-450 text-yellow-405' : 'text-slate-350'} />
                         ))}
                       </div>
-                      <p className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed font-semibold italic">"{rev.comment}"</p>
+                      <p className="text-xs text-slate-655 dark:text-slate-350 leading-relaxed font-semibold italic">"{translatedReviews[rev._id] || rev.comment}"</p>
+
+                      {/* Attached images and videos */}
+                      {((rev.images && rev.images.length > 0) || (rev.videos && rev.videos.length > 0)) && (
+                        <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-slate-200/40 dark:border-slate-850/40">
+                          {rev.images?.map((img, iIdx) => (
+                            <a key={iIdx} href={img} target="_blank" rel="noopener noreferrer" className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                              <img src={img} alt="Review attachment" className="w-full h-full object-cover" />
+                            </a>
+                          ))}
+                          {rev.videos?.map((vid, vIdx) => (
+                            <video key={vIdx} src={vid} controls className="h-16 max-w-[120px] rounded-lg border border-slate-200 shrink-0 object-cover" />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -754,6 +855,31 @@ const ProductDetails = () => {
                       placeholder="Share details of your purchase experience, product quality, etc..."
                       className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105"
                     />
+
+                    {/* Media uploads selection */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Upload Images (Max 5)</label>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => setReviewImages(Array.from(e.target.files))}
+                          className="w-full text-xs text-slate-550 border border-slate-200 dark:border-slate-700 p-2 rounded-xl bg-white dark:bg-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Upload Videos (Max 2)</label>
+                        <input
+                          type="file"
+                          multiple
+                          accept="video/*"
+                          onChange={(e) => setReviewVideos(Array.from(e.target.files))}
+                          className="w-full text-xs text-slate-550 border border-slate-200 dark:border-slate-700 p-2 rounded-xl bg-white dark:bg-slate-800"
+                        />
+                      </div>
+                    </div>
+
                     <button type="submit" className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer">
                       Post Review
                     </button>
