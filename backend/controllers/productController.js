@@ -21,10 +21,10 @@ const deleteLocalFile = (filePath) => {
 // @access  Private (Seller only)
 const createProduct = async (req, res) => {
   try {
-    const { 
-      title, description, price, category, subcategory, 
-      offerPercentage, stockStatus, stockQuantity, sku, 
-      deliveryLocations, tags, marketingCaption 
+    const {
+      title, description, price, category, subcategory,
+      offerPercentage, stockStatus, stockQuantity, sku,
+      deliveryLocations, tags, marketingCaption
     } = req.body;
 
     if (!title || !description || !price || !category) {
@@ -195,10 +195,10 @@ const getProductById = async (req, res) => {
 // @access  Private (Seller owner or Admin only)
 const updateProduct = async (req, res) => {
   try {
-    const { 
-      title, description, price, category, subcategory, 
-      offerPercentage, stockStatus, stockQuantity, sku, 
-      deliveryLocations, tags, marketingCaption, status 
+    const {
+      title, description, price, category, subcategory,
+      offerPercentage, stockStatus, stockQuantity, sku,
+      deliveryLocations, tags, marketingCaption, status
     } = req.body;
 
     let product = await Product.findById(req.params.id);
@@ -361,15 +361,15 @@ const getMyProducts = async (req, res) => {
 // @access  Public
 const filterProducts = async (req, res) => {
   try {
-    const { 
-      categories, category, 
-      subcategories, subcategory, 
-      minPrice, maxPrice, priceRange, 
-      stockStatus, 
-      offer, offerStatus, 
-      location, search 
+    const {
+      categories, category,
+      subcategories, subcategory,
+      minPrice, maxPrice, priceRange,
+      stockStatus,
+      offer, offerStatus,
+      location, search
     } = req.query;
-    
+
     let query = { status: 'active' };
     let andConditions = [];
 
@@ -412,8 +412,8 @@ const filterProducts = async (req, res) => {
     // 3. Category Filter
     const activeCategories = category || categories;
     if (activeCategories) {
-      const catList = Array.isArray(activeCategories) 
-        ? activeCategories 
+      const catList = Array.isArray(activeCategories)
+        ? activeCategories
         : activeCategories.split(',').map(s => s.trim()).filter(Boolean);
       if (catList.length > 0) {
         query.category = { $in: catList.map(c => new RegExp(`^${c}$`, 'i')) };
@@ -473,37 +473,299 @@ const filterProducts = async (req, res) => {
   }
 };
 
-// @desc    Search products by keyword and optional category
+// @desc    Common product search using MongoDB Atlas Search
 // @route   GET /api/products/search
 // @access  Public
 const searchProducts = async (req, res) => {
   try {
-    const { keyword, category } = req.query;
-    let query = { status: 'active' };
+    const {
+      keyword,
+      category,
+      limit = 30,
+      page = 1
+    } = req.query;
 
-    if (category && category !== 'All' && category !== 'all') {
-      query.category = { $regex: `^${category}$`, $options: 'i' };
+    const searchTerm = keyword?.trim();
+
+    // --------------------------------------------------
+    // VALIDATION
+    // --------------------------------------------------
+
+    if (!searchTerm) {
+      return res.json([]);
     }
 
-    if (keyword) {
-      query.$or = [
-        { $text: { $search: keyword } },
-        { title: { $regex: keyword, $options: 'i' } },
-        { description: { $regex: keyword, $options: 'i' } },
-        { sku: { $regex: keyword, $options: 'i' } },
-        { tags: { $in: [new RegExp(keyword, 'i')] } }
-      ];
+    const parsedLimit = Math.min(
+      Math.max(Number(limit) || 30, 1),
+      50
+    );
+
+    const parsedPage = Math.max(Number(page) || 1, 1);
+
+    const skip = (parsedPage - 1) * parsedLimit;
+
+    // --------------------------------------------------
+    // ATLAS SEARCH
+    // --------------------------------------------------
+
+    const searchShould = [
+      // Product title - strongest match
+      {
+        autocomplete: {
+          query: searchTerm,
+          path: 'title',
+          tokenOrder: 'sequential',
+          fuzzy: {
+            maxEdits: 1,
+            prefixLength: 2,
+            maxExpansions: 50
+          },
+          score: {
+            boost: {
+              value: 5
+            }
+          }
+        }
+      },
+
+      // Category
+      {
+        autocomplete: {
+          query: searchTerm,
+          path: 'category',
+          tokenOrder: 'sequential',
+          fuzzy: {
+            maxEdits: 1,
+            prefixLength: 2
+          },
+          score: {
+            boost: {
+              value: 3
+            }
+          }
+        }
+      },
+
+      // Subcategory
+      {
+        autocomplete: {
+          query: searchTerm,
+          path: 'subcategory',
+          tokenOrder: 'sequential',
+          fuzzy: {
+            maxEdits: 1,
+            prefixLength: 2
+          },
+          score: {
+            boost: {
+              value: 2.5
+            }
+          }
+        }
+      },
+
+      // Tags
+      {
+        autocomplete: {
+          query: searchTerm,
+          path: 'tags',
+          tokenOrder: 'sequential',
+          fuzzy: {
+            maxEdits: 1,
+            prefixLength: 2
+          },
+          score: {
+            boost: {
+              value: 2
+            }
+          }
+        }
+      },
+
+      // Description
+      {
+        text: {
+          query: searchTerm,
+          path: 'description',
+          fuzzy: {
+            maxEdits: 1,
+            prefixLength: 2
+          },
+          score: {
+            boost: {
+              value: 1.5
+            }
+          }
+        }
+      },
+
+      // SKU
+      {
+        text: {
+          query: searchTerm,
+          path: 'sku',
+          fuzzy: {
+            maxEdits: 1,
+            prefixLength: 2
+          },
+          score: {
+            boost: {
+              value: 2
+            }
+          }
+        }
+      },
+
+      // Marketing caption
+      {
+        text: {
+          query: searchTerm,
+          path: 'marketingCaption',
+          fuzzy: {
+            maxEdits: 1,
+            prefixLength: 2
+          }
+        }
+      }
+    ];
+
+    // --------------------------------------------------
+    // FILTERS
+    // --------------------------------------------------
+
+    const filters = [
+      {
+        equals: {
+          path: 'status',
+          value: 'active'
+        }
+      }
+    ];
+
+    // Category filter
+    if (
+      category &&
+      category !== 'All' &&
+      category !== 'all'
+    ) {
+      filters.push({
+        text: {
+          path: 'category',
+          query: category
+        }
+      });
     }
 
-    const products = await Product.find(query)
-      .populate('seller', 'name email username phone address')
-      .limit(30);
+    // --------------------------------------------------
+    // PIPELINE
+    // --------------------------------------------------
+
+    const pipeline = [
+      {
+        $search: {
+          index: 'products_search',
+
+          compound: {
+            filter: filters,
+
+            should: searchShould,
+
+            minimumShouldMatch: 1
+          }
+        }
+      },
+
+      // Search score
+      {
+        $set: {
+          searchScore: {
+            $meta: 'searchScore'
+          }
+        }
+      },
+
+      // Most relevant first
+      {
+        $sort: {
+          searchScore: -1,
+          createdAt: -1
+        }
+      },
+
+      // Pagination
+      {
+        $skip: skip
+      },
+
+      {
+        $limit: parsedLimit
+      },
+
+      // Keep seller information compatible
+      // with the old endpoint
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'seller',
+          foreignField: '_id',
+          as: 'seller'
+        }
+      },
+
+      {
+        $unwind: {
+          path: '$seller',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          price: 1,
+          category: 1,
+          subcategory: 1,
+          imageUrl: 1,
+          images: 1,
+          offerPercentage: 1,
+          stockStatus: 1,
+          stockQuantity: 1,
+          sku: 1,
+          deliveryLocations: 1,
+          ratings: 1,
+          reviews: 1,
+          tags: 1,
+          marketingCaption: 1,
+          seller: {
+            _id: 1,
+            name: 1,
+            email: 1,
+            username: 1,
+            phone: 1,
+            address: 1
+          },
+          status: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          searchScore: 1
+        }
+      }
+    ];
+
+    const products = await Product.aggregate(pipeline);
 
     res.json(products);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Atlas Search failed:', error);
+
+    res.status(500).json({
+      message: 'Product search failed',
+      error: error.message
+    });
   }
 };
+
 
 // @desc    Get average, min, max product prices for a category
 // @route   GET /api/products/stats/category
@@ -628,18 +890,18 @@ const createProductReview = async (req, res) => {
     };
 
     product.reviews.push(review);
-    
+
     // Calculate new average rating
     product.ratings =
       product.reviews.reduce((acc, item) => item.rating + acc, 0) /
       product.reviews.length;
 
     await product.save();
-    
+
     const updatedProduct = await Product.findById(req.params.id)
       .populate('seller', 'name email username phone address')
       .populate('reviews.userId', 'name avatar');
-      
+
     res.status(201).json(updatedProduct);
   } catch (error) {
     if (req.files) {

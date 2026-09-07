@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useLanguage } from '../context/LanguageContext';
-import { KeyRound, Mail, ArrowLeft, ShieldCheck, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { KeyRound, Mail, ArrowLeft, ShieldCheck, CheckCircle } from 'lucide-react';
 
 const ForgotPassword = () => {
   const { t } = useLanguage();
@@ -13,9 +13,7 @@ const ForgotPassword = () => {
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -90,11 +88,11 @@ const ForgotPassword = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-300 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="flex justify-center">
-          <div className="p-3 bg-gradient-to-tr from-rose-500 to-indigo-600 rounded-2xl text-white shadow-xl shadow-rose-200 dark:shadow-none animate-bounce">
+          <div className="p-3 bg-linear-to-tr from-rose-500 to-indigo-600 rounded-2xl text-white shadow-xl shadow-rose-200 dark:shadow-none animate-bounce">
             <KeyRound size={28} />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-2xl font-black tracking-tight bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 dark:from-rose-400 dark:to-purple-400 bg-clip-text text-transparent">
+        <h2 className="mt-6 text-center text-2xl font-black tracking-tight bg-linear-to-r from-rose-600 via-purple-600 to-indigo-600 dark:from-rose-400 dark:to-purple-400 bg-clip-text text-transparent">
           {step === 'email' && 'Forgot Password'}
           {step === 'otp' && 'Verify OTP'}
           {step === 'reset' && 'Reset Password'}
@@ -147,7 +145,7 @@ const ForgotPassword = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 shadow-md shadow-rose-200 dark:shadow-none hover:shadow-lg transition-all"
+                className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-linear-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 shadow-md shadow-rose-200 dark:shadow-none hover:shadow-lg transition-all"
               >
                 {loading ? 'Sending...' : 'Send OTP'}
               </button>
@@ -180,7 +178,7 @@ const ForgotPassword = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 shadow-md shadow-rose-200 dark:shadow-none hover:shadow-lg transition-all"
+                className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-linear-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 shadow-md shadow-rose-200 dark:shadow-none hover:shadow-lg transition-all"
               >
                 {loading ? 'Verifying...' : 'Verify OTP'}
               </button>
@@ -204,20 +202,13 @@ const ForgotPassword = () => {
                 </label>
                 <div className="relative">
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="block w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-2xl focus:ring-rose-500 focus:border-rose-500 text-sm focus:outline-none transition-all"
                     placeholder="••••••••"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-250 cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
                 </div>
               </div>
 
@@ -227,27 +218,21 @@ const ForgotPassword = () => {
                 </label>
                 <div className="relative">
                   <input
-                    type={showConfirmPassword ? 'text' : 'password'}
+                    type="password"
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="block w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-2xl focus:ring-rose-500 focus:border-rose-500 text-sm focus:outline-none transition-all"
                     placeholder="••••••••"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-250 cursor-pointer"
-                  >
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
+
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 shadow-md shadow-rose-200 dark:shadow-none hover:shadow-lg transition-all"
+                className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-linear-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 shadow-md shadow-rose-200 dark:shadow-none hover:shadow-lg transition-all"
               >
                 {loading ? 'Saving...' : 'Reset Password'}
               </button>
@@ -265,7 +250,7 @@ const ForgotPassword = () => {
               </p>
               <Link
                 to="/login"
-                className="w-full inline-flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-750 focus:outline-none shadow-md shadow-rose-200 dark:shadow-none hover:shadow-lg transition-all"
+                className="w-full inline-flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-linear-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-750 focus:outline-none shadow-md shadow-rose-200 dark:shadow-none hover:shadow-lg transition-all"
               >
                 Go to Login
               </Link>

@@ -55,4 +55,24 @@ const admin = (req, res, next) => {
   }
 };
 
-module.exports = { protect, seller, admin };
+// Middleware to check if user is either an approved seller or an admin
+const sellerOrAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authorized, user not found' });
+  }
+
+  if (req.user.role === 'admin') {
+    return next();
+  }
+
+  if (req.user.role === 'seller') {
+    if (req.user.status !== 'approved') {
+      return res.status(403).json({ message: 'Access denied. Seller account vetting is pending or suspended.' });
+    }
+    return next();
+  }
+
+  return res.status(403).json({ message: 'Access denied. Seller or Admin role required.' });
+};
+
+module.exports = { protect, seller, admin, sellerOrAdmin };

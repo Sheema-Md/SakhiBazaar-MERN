@@ -1,7 +1,9 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Notification = require('../models/Notification');
 const Shipment = require('../models/Shipment');
+const { calculateOrderPricing } = require('../utils/pricing');
 const { getIo, getActiveUserSocketId } = require('../config/socket');
 
 // Helper to push notification to a user
@@ -27,24 +29,92 @@ const createAndSendNotification = async (recipientId, text) => {
 // @access  Private
 const createOrder = async (req, res) => {
   try {
-    const { products, totalAmount, shippingAddress } = req.body;
+    // 1. Normalize input array (accept either 'items' or 'products')
+    const rawItems = req.body.items || req.body.products;
 
-    if (!products || products.length === 0) {
-      return res.status(400).json({ message: 'No products in order' });
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      return res.status(400).json({ message: 'Order must contain at least one product' });
     }
 
-    // Create the order
-    const orderItems = [];
-    for (const item of products) {
-      const prod = await Product.findById(item.product);
-      if (!prod) {
-        return res.status(404).json({ message: `Product ${item.product} not found` });
+    // 2. Validate items and consolidate duplicate product IDs
+    // Map productId string -> consolidated integer quantity
+    const consolidatedMap = new Map();
+
+    for (const raw of rawItems) {
+      if (!raw || typeof raw !== 'object') {
+        return res.status(400).json({ message: 'Invalid product item in order' });
       }
-      
-      // Deduct inventory
+
+      // Extract ONLY product ID (client cannot control price, subtotal, total)
+      let productId = raw.product || raw.productId;
+      if (productId && typeof productId === 'object' && productId._id) {
+        productId = productId._id;
+      }
+
+      if (!productId) {
+        return res.status(400).json({ message: 'Product ID is required for each item' });
+      }
+
+      const prodIdStr = productId.toString().trim();
+      if (!mongoose.Types.ObjectId.isValid(prodIdStr)) {
+        return res.status(400).json({ message: `Invalid product ID format: ${prodIdStr}` });
+      }
+
+      // Validate quantity: must be positive whole integer
+      const qty = raw.quantity;
+      if (
+        qty === null ||
+        qty === undefined ||
+        typeof qty !== 'number' ||
+        !Number.isFinite(qty) ||
+        !Number.isInteger(qty) ||
+        qty < 1
+      ) {
+        return res.status(400).json({ message: `Quantity must be a positive whole integer (>= 1), received: ${qty}` });
+      }
+
+      const currentQty = consolidatedMap.get(prodIdStr) || 0;
+      consolidatedMap.set(prodIdStr, currentQty + qty);
+    }
+
+    if (consolidatedMap.size === 0) {
+      return res.status(400).json({ message: 'Order must contain at least one valid product' });
+    }
+
+    // 3. Fetch authoritative Product records from DB and validate existence, status, and stock
+    const validatedItems = [];
+
+    for (const [prodIdStr, quantity] of consolidatedMap.entries()) {
+      const prod = await Product.findById(prodIdStr);
+      if (!prod) {
+        return res.status(404).json({ message: `Product ${prodIdStr} not found` });
+      }
+
+      if (prod.status && prod.status !== 'active') {
+        return res.status(400).json({ message: `Product "${prod.title}" is currently unavailable` });
+      }
+
+      if (prod.stockQuantity < quantity) {
+        return res.status(400).json({
+          message: `Insufficient stock for "${prod.title}". Requested: ${quantity}, Available: ${prod.stockQuantity}`
+        });
+      }
+
+      validatedItems.push({
+        productDoc: prod,
+        quantity,
+      });
+    }
+
+    // 4. Authoritative Pricing Calculation via centralized helper
+    const pricingResult = calculateOrderPricing(validatedItems);
+    const { orderItems, subtotal, gst, shippingFee, totalAmount } = pricingResult;
+
+    // 5. Deduct inventory (preserving existing non-atomic logic per phase scope)
+    for (const item of validatedItems) {
+      const prod = item.productDoc;
       prod.stockQuantity = Math.max(0, prod.stockQuantity - item.quantity);
-      
-      // Update stock status based on quantity
+
       if (prod.stockQuantity === 0) {
         prod.stockStatus = 'Out of Stock';
       } else if (prod.stockQuantity <= 5) {
@@ -52,14 +122,8 @@ const createOrder = async (req, res) => {
       } else {
         prod.stockStatus = 'In Stock';
       }
-      
-      await prod.save();
 
-      orderItems.push({
-        product: item.product,
-        quantity: item.quantity,
-        price: prod.price,
-      });
+      await prod.save();
 
       // Notify seller about new purchase
       await createAndSendNotification(
@@ -68,14 +132,17 @@ const createOrder = async (req, res) => {
       );
     }
 
-    const orderId = `sb_${Math.floor(Math.random() * 1000000000).toString(36).toUpperCase()}`;
-
+    // 6. Create Order with authoritative server-computed amounts (ignoring any client-provided financial fields)
+    const { shippingAddress } = req.body;
     const order = await Order.create({
       customer: req.user._id,
       products: orderItems,
+      subtotal,
+      gst,
+      shippingFee,
       totalAmount,
-      shippingAddress: shippingAddress || 'Address on file',
-      paymentStatus: 'pending', // Initial state is pending until paid via Stripe
+      shippingAddress: typeof shippingAddress === 'string' && shippingAddress.trim() ? shippingAddress.trim() : 'Address on file',
+      paymentStatus: 'pending',
       orderStatus: 'Pending',
       trackingNumber: `TRK_${Date.now()}`
     });
@@ -182,7 +249,7 @@ const trackOrder = async (req, res) => {
 
 // @desc    Update order status
 // @route   PUT /api/orders/status/:id
-// @access  Private
+// @access  Private (Approved Seller with product in order, or Admin only)
 const updateOrderStatus = async (req, res) => {
   try {
     const { status, description } = req.body;
@@ -197,14 +264,28 @@ const updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }
 
-    const order = await Order.findById(req.params.id);
+    // Role check: Seller or Admin
+    if (req.user.role !== 'admin' && req.user.role !== 'seller') {
+      return res.status(403).json({ message: 'Not authorized to modify order status' });
+    }
+
+    const order = await Order.findById(req.params.id).populate('products.product');
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Role check: Seller or Admin
-    if (req.user.role !== 'admin' && req.user.role !== 'seller') {
-      return res.status(403).json({ message: 'Not authorized to modify order status' });
+    // RESOURCE OWNERSHIP: seller must have at least one product in this order
+    if (req.user.role === 'seller') {
+      if (req.user.status !== 'approved') {
+        return res.status(403).json({ message: 'Access denied. Seller account vetting is pending or suspended.' });
+      }
+      const sellerId = req.user._id.toString();
+      const sellerOwnsItem = order.products.some(
+        item => item.product && item.product.seller && item.product.seller.toString() === sellerId
+      );
+      if (!sellerOwnsItem) {
+        return res.status(403).json({ message: 'Not authorized to modify this order status — no products from your store in this order' });
+      }
     }
 
     order.orderStatus = matchedStatus;

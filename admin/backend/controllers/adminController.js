@@ -10,46 +10,6 @@ const generateToken = (id) => {
   });
 };
 
-// @desc    Register a new admin
-// @route   POST /api/admin/auth/register
-// @access  Public
-const registerAdmin = async (req, res) => {
-  try {
-    const { name, username, email, password, phoneNumber, aadhaarNumber } = req.body;
-
-    if (!name || !username || !email || !password || !phoneNumber || !aadhaarNumber) {
-      return res.status(400).json({ message: 'Please fill in all fields' });
-    }
-
-    const emailExists = await User.findOne({ email });
-    const usernameExists = await User.findOne({ username });
-    if (emailExists || usernameExists) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
-
-    const admin = await User.create({
-      name,
-      username,
-      email,
-      password,
-      phoneNumber,
-      aadhaarNumber,
-      role: 'admin',
-      status: 'approved'
-    });
-
-    res.status(201).json({
-      _id: admin._id,
-      name: admin.name,
-      username: admin.username,
-      email: admin.email,
-      role: admin.role,
-      token: generateToken(admin._id),
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 
 // @desc    Login admin
 // @route   POST /api/admin/auth/login
@@ -248,7 +208,6 @@ const getAnalytics = async (req, res) => {
 };
 
 module.exports = {
-  registerAdmin,
   loginAdmin,
   getUsers,
   updateUserStatus,

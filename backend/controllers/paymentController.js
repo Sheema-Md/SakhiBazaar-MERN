@@ -25,13 +25,13 @@ const createAndSendNotification = async (recipientId, text) => {
 
 // @desc    Process a mock checkout payment
 // @route   POST /api/payments
-// @access  Private
+// @access  Private (Customer: own orders only)
 const createPayment = async (req, res) => {
   try {
-    const { orderId, amount, paymentMethod } = req.body;
+    const { orderId, paymentMethod } = req.body;
 
-    if (!orderId || !amount || !paymentMethod) {
-      return res.status(400).json({ message: 'Order ID, amount, and payment method are required' });
+    if (!orderId || !paymentMethod) {
+      return res.status(400).json({ message: 'Order ID and payment method are required' });
     }
 
     const validMethods = ['UPI', 'Credit Card', 'Debit Card', 'Net Banking', 'Wallet', 'Cash on Delivery'];
@@ -44,6 +44,23 @@ const createPayment = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    // RESOURCE OWNERSHIP: only the order's customer may pay it
+    if (order.customer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to pay for this order' });
+    }
+
+    // AMOUNT TAMPERING PREVENTION: amount is derived from the server-authoritative order total
+    const serverAmount = order.totalAmount;
+
+    if (!serverAmount || serverAmount <= 0) {
+      return res.status(400).json({ message: 'Order has an invalid total amount' });
+    }
+
+    // Prevent duplicate payment: if order is already paid/confirmed, reject
+    if (order.paymentStatus === 'completed') {
+      return res.status(400).json({ message: 'Order has already been paid' });
+    }
+
     const isCod = paymentMethod === 'Cash on Delivery';
     const status = isCod ? 'pending' : 'completed';
     const finalOrderStatus = isCod ? 'Processing' : 'Confirmed';
@@ -51,11 +68,11 @@ const createPayment = async (req, res) => {
     // Generate custom transaction ID
     const transactionId = `TXN_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
 
-    // Create payment record
+    // Create payment record using server-authoritative amount (never client-provided)
     const payment = await Payment.create({
       user: req.user._id,
       order: orderId,
-      amount: Number(amount),
+      amount: serverAmount,
       paymentMethod,
       paymentStatus: status,
       transactionId,
@@ -82,7 +99,7 @@ const createPayment = async (req, res) => {
     // Trigger Notification for customer
     const customerMsg = isCod 
       ? `Your order #${order._id} has been placed successfully via Cash on Delivery!`
-      : `Payment of ₹${amount} successful! Your order #${order._id} has been confirmed.`;
+      : `Payment of ₹${serverAmount} successful! Your order #${order._id} has been confirmed.`;
     await createAndSendNotification(req.user._id, customerMsg);
 
     // Trigger Notification for each product's seller
@@ -137,7 +154,7 @@ const getPayments = async (req, res) => {
         )
       );
     } else {
-      // Customer
+      // Customer: only their own payments
       payments = await Payment.find({ user: req.user._id })
         .populate({
           path: 'order',
@@ -154,7 +171,7 @@ const getPayments = async (req, res) => {
 
 // @desc    Process a mock payment refund
 // @route   POST /api/payments/refund
-// @access  Private (Admin/Seller only)
+// @access  Private (Admin only, or Seller who has a product in the order)
 const refundPayment = async (req, res) => {
   try {
     const { paymentId, reason } = req.body;
@@ -163,19 +180,30 @@ const refundPayment = async (req, res) => {
       return res.status(400).json({ message: 'Payment ID is required' });
     }
 
+    // Role check: only admin or seller may issue refunds
+    if (req.user.role !== 'admin' && req.user.role !== 'seller') {
+      return res.status(403).json({ message: 'Not authorized to issue refunds' });
+    }
+
     const payment = await Payment.findById(paymentId);
     if (!payment) {
       return res.status(404).json({ message: 'Payment not found' });
     }
 
-    const order = await Order.findById(payment.order);
+    const order = await Order.findById(payment.order).populate('products.product');
     if (!order) {
       return res.status(404).json({ message: 'Associated order not found' });
     }
 
-    // Role check: Seller of the order products or Admin
-    if (req.user.role !== 'admin' && req.user.role !== 'seller') {
-      return res.status(403).json({ message: 'Not authorized to issue refunds' });
+    // RESOURCE OWNERSHIP for sellers: verify the seller has at least one product in this order
+    if (req.user.role === 'seller') {
+      const sellerId = req.user._id.toString();
+      const sellerOwnsItem = order.products.some(
+        item => item.product && item.product.seller && item.product.seller.toString() === sellerId
+      );
+      if (!sellerOwnsItem) {
+        return res.status(403).json({ message: 'Not authorized to refund this payment — no products from your store in this order' });
+      }
     }
 
     payment.paymentStatus = 'refunded';
@@ -207,7 +235,7 @@ const refundPayment = async (req, res) => {
 
 // @desc    Create a Stripe PaymentIntent for an order
 // @route   POST /api/payments/create-intent
-// @access  Private
+// @access  Private (Customer: own orders only)
 const createPaymentIntent = async (req, res) => {
   try {
     const { orderId } = req.body;
@@ -221,7 +249,16 @@ const createPaymentIntent = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Stripe expects amount in cents/paise (integer)
+    // RESOURCE OWNERSHIP: only the order's customer may initiate Stripe payment
+    if (order.customer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to create a payment intent for this order' });
+    }
+
+    if (order.paymentStatus === 'completed') {
+      return res.status(400).json({ message: 'Order has already been paid' });
+    }
+
+    // AMOUNT: derived from server-authoritative order total — never client-provided
     const amountInSubunits = Math.round(order.totalAmount * 100);
 
     // Create a PaymentIntent with the order amount and currency
@@ -249,7 +286,7 @@ const createPaymentIntent = async (req, res) => {
 
 // @desc    Confirm and finalize a Stripe payment in the DB
 // @route   POST /api/payments/confirm
-// @access  Private
+// @access  Private (Customer: own orders only)
 const confirmStripePayment = async (req, res) => {
   try {
     const { orderId, paymentIntentId } = req.body;
@@ -270,6 +307,17 @@ const confirmStripePayment = async (req, res) => {
     const order = await Order.findById(orderId).populate('products.product');
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // RESOURCE OWNERSHIP: confirm that the authenticated user owns this order
+    if (order.customer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to confirm payment for this order' });
+    }
+
+    // CROSS-VERIFY: ensure Stripe PaymentIntent matches this order (metadata check)
+    if (paymentIntent.metadata && paymentIntent.metadata.orderId &&
+        paymentIntent.metadata.orderId !== orderId) {
+      return res.status(400).json({ message: 'PaymentIntent does not match this order' });
     }
 
     // Check if payment was already recorded

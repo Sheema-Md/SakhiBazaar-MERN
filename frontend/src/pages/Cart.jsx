@@ -1,24 +1,24 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../context/CartContext.jsx';
 import { AuthContext } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { 
-  Trash2, Plus, Minus, ArrowLeft, ShoppingBag, 
-  CreditCard, Sparkles, Clock, ShoppingCart 
+import {
+  Trash2, Plus, Minus, ArrowLeft, ShoppingBag,
+  CreditCard, Sparkles, Clock, ShoppingCart
 } from 'lucide-react';
 
 const Cart = () => {
   const { user } = useContext(AuthContext);
   const { t } = useLanguage();
-  const { 
-    cartItems, 
-    updateQuantity, 
-    removeFromCart, 
-    toggleSaveForLater, 
-    clearCart, 
-    getCartTotal, 
-    getCartCount 
+  const {
+    cartItems,
+    updateQuantity,
+    removeFromCart,
+    toggleSaveForLater,
+    clearCart,
+    getCartTotal,
+    getCartCount
   } = useCart();
   const navigate = useNavigate();
 
@@ -40,7 +40,7 @@ const Cart = () => {
   return (
     <div className="min-h-screen bg-gray-50/30 dark:bg-slate-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8 text-slate-800 dark:text-slate-105 transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
-        
+
         {/* Page title */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
@@ -64,10 +64,10 @@ const Cart = () => {
         {activeCartItems.length > 0 ? (
           /* Cart Grid */
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
+
             {/* Left Column: Cart Items List */}
             <div className="lg:col-span-2 space-y-6">
-              
+
               {/* Clear Cart Button */}
               <div className="flex justify-end">
                 <button
@@ -112,7 +112,7 @@ const Cart = () => {
 
                     {/* Quantity controls and pricing */}
                     <div className="flex items-center justify-between sm:justify-end gap-6 border-t border-gray-50 dark:border-slate-750 pt-3 sm:border-0 sm:pt-0 shrink-0">
-                      
+
                       {/* Quantity Selector Widget */}
                       <div className="flex items-center space-x-1.5 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl p-1">
                         <button
@@ -144,7 +144,7 @@ const Cart = () => {
                             ₹{Number(item.product.price).toLocaleString('en-IN')} each
                           </p>
                         </div>
-                        
+
                         <div className="flex flex-col sm:items-end gap-1.5">
                           <button
                             onClick={() => toggleSaveForLater(item.product._id)}
@@ -195,13 +195,13 @@ const Cart = () => {
                     )}
                   </span>
                 </div>
-                
+
                 {shipping > 0 && (
                   <div className="text-[10px] text-rose-500 bg-rose-50 dark:bg-rose-955/20 p-2 rounded-lg font-medium leading-normal mt-2">
                     Tip: Add products worth ₹{Number(1000 - total).toLocaleString('en-IN')} more to unlock <b>FREE shipping!</b>
                   </div>
                 )}
-                
+
                 <div className="border-t border-gray-100 dark:border-slate-750 pt-3 flex justify-between items-baseline">
                   <span className="text-base font-bold text-gray-900 dark:text-white">{t('grandTotal') || 'Total Amount'}</span>
                   <span className="text-xl font-black text-rose-600 dark:text-rose-455">

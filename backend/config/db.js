@@ -5,49 +5,30 @@ const seedDefaultAdmin = async () => {
   try {
     const adminExists = await User.findOne({ role: 'admin' });
     if (!adminExists) {
-      console.log('Seeding default administrator in main backend...');
+      const email = process.env.INITIAL_ADMIN_EMAIL || 'admin@sakhibazaar.com';
+      const password = process.env.INITIAL_ADMIN_PASSWORD || 'Admin@Password123';
+      const name = process.env.INITIAL_ADMIN_NAME || 'Sakhi Bazaar Admin';
+      const username = process.env.INITIAL_ADMIN_USERNAME || 'admin';
+      const phoneNumber = process.env.INITIAL_ADMIN_PHONE || '9999999999';
+      const aadhaarNumber = process.env.INITIAL_ADMIN_AADHAAR || '999999999999';
+
+      console.log(`No administrator found. Seeding initial administrator (${email})...`);
       await User.create({
-        name: 'Sakhi Bazaar Admin',
-        username: 'admin',
-        email: 'admin@sakhibazaar.com',
-        password: 'Admin@Password123',
-        phoneNumber: '9999999999',
-        aadhaarNumber: '999999999999',
+        name,
+        username,
+        email,
+        password,
+        phoneNumber,
+        aadhaarNumber,
         role: 'admin',
         status: 'approved'
       });
-      console.log('✅ Default admin seeded successfully: admin@sakhibazaar.com / Admin@Password123');
+      console.log('✅ Initial administrator seeded successfully.');
     } else {
-      console.log(`Admin user already exists in database: Email="${adminExists.email}", Username="${adminExists.username}". Verifying credentials...`);
-      
-      let needsSave = false;
-      if (adminExists.email !== 'admin@sakhibazaar.com') {
-        console.log(`Updating admin email from "${adminExists.email}" to "admin@sakhibazaar.com"`);
-        adminExists.email = 'admin@sakhibazaar.com';
-        needsSave = true;
-      }
-      if (adminExists.username !== 'admin') {
-        console.log(`Updating admin username from "${adminExists.username}" to "admin"`);
-        adminExists.username = 'admin';
-        needsSave = true;
-      }
-
-      const isMatch = await adminExists.matchPassword('Admin@Password123');
-      if (!isMatch) {
-        console.log('Admin password hash is invalid/corrupted. Resetting to default...');
-        adminExists.password = 'Admin@Password123';
-        needsSave = true;
-      }
-
-      if (needsSave) {
-        await adminExists.save();
-        console.log('✅ Admin credentials updated and saved successfully.');
-      } else {
-        console.log('✅ Admin credentials and password are valid.');
-      }
+      console.log('✅ Administrator account found in database. Preserving existing credentials.');
     }
   } catch (error) {
-    console.error('❌ Error seeding default admin in main backend:', error.message);
+    console.error('❌ Error in administrator seeding check:', error.message);
   }
 };
 

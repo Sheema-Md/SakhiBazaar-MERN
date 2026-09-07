@@ -60,19 +60,34 @@ const getShipments = async (req, res) => {
 
 // @desc    Update shipment status and tracking details
 // @route   PUT /api/shipments/:id (id is orderId)
-// @access  Private (Seller/Admin only)
+// @access  Private (Seller with product in order, or Admin only)
 const updateShipment = async (req, res) => {
   try {
     const { status, trackingNumber, timelineEvent, timelineDescription } = req.body;
     const orderId = req.params.id;
 
+    // Role check first
     if (req.user.role !== 'seller' && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to update shipments' });
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate('products.product');
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // RESOURCE OWNERSHIP: seller must have at least one product in this order
+    if (req.user.role === 'seller') {
+      if (req.user.status !== 'approved') {
+        return res.status(403).json({ message: 'Access denied. Seller account vetting is pending or suspended.' });
+      }
+      const sellerId = req.user._id.toString();
+      const sellerOwnsItem = order.products.some(
+        item => item.product && item.product.seller && item.product.seller.toString() === sellerId
+      );
+      if (!sellerOwnsItem) {
+        return res.status(403).json({ message: 'Not authorized to update this shipment — no products from your store in this order' });
+      }
     }
 
     if (status) {

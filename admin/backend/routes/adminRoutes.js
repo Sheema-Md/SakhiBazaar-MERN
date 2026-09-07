@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const {
-  registerAdmin,
   loginAdmin,
   getUsers,
   updateUserStatus,
@@ -14,8 +13,7 @@ const {
 } = require('../controllers/adminController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
-// Public Auth routes
-router.post('/auth/register', registerAdmin);
+// Public Auth routes (Login only - Admin accounts must not be registered via unauthenticated public endpoints)
 router.post('/auth/login', loginAdmin);
 
 // Moderation routes (Protected)

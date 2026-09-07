@@ -19,11 +19,11 @@ const callWithRetry = async (prompt, retries = 3, initialDelay = 1200) => {
       return await model.generateContent(prompt);
     } catch (error) {
       const msg = error.message || '';
-      const isRateLimit = msg.includes('429') || 
-                          msg.includes('ResourceExhausted') || 
-                          msg.includes('Quota exceeded') || 
-                          msg.includes('Too Many Requests');
-      
+      const isRateLimit = msg.includes('429') ||
+        msg.includes('ResourceExhausted') ||
+        msg.includes('Quota exceeded') ||
+        msg.includes('Too Many Requests');
+
       if (isRateLimit && attempt < retries - 1) {
         const nextModel = modelsToTry[(attempt + 1) % modelsToTry.length];
         console.warn(`[Gemini API] Rate limit (429) hit on model "${modelName}". Automatically switching fallback to "${nextModel}" in ${delay}ms...`);
@@ -63,8 +63,8 @@ const generateDescription = async (req, res) => {
     }
 
     if (isApiKeyInvalid(process.env.GEMINI_API_KEY)) {
-      return res.status(400).json({ 
-        message: 'Google Gemini API key is missing or invalid on the server. Please add a valid GEMINI_API_KEY in your backend/.env file.' 
+      return res.status(400).json({
+        message: 'Google Gemini API key is missing or invalid on the server. Please add a valid GEMINI_API_KEY in your backend/.env file.'
       });
     }
 
@@ -103,8 +103,8 @@ const generateCaption = async (req, res) => {
     }
 
     if (isApiKeyInvalid(process.env.GEMINI_API_KEY)) {
-      return res.status(400).json({ 
-        message: 'Google Gemini API key is missing or invalid on the server. Please add a valid GEMINI_API_KEY in your backend/.env file.' 
+      return res.status(400).json({
+        message: 'Google Gemini API key is missing or invalid on the server. Please add a valid GEMINI_API_KEY in your backend/.env file.'
       });
     }
 
@@ -134,7 +134,7 @@ Rules:
 // @desc    Translate product details using Google Gemini
 // @route   POST /api/ai/translate
 // @access  Public
-const translateText = async (req, res) => {
+/*const translateText = async (req, res) => {
   try {
     const { text, targetLanguage } = req.body;
 
@@ -178,10 +178,10 @@ ${text}`;
     console.error('Gemini translation error:', error);
     res.status(500).json({ message: 'AI translation failed: ' + getFriendlyErrorMessage(error) });
   }
-};
+};*/
 
 module.exports = {
   generateDescription,
   generateCaption,
-  translateText,
+  //translateText,
 };

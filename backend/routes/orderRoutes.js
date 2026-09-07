@@ -6,11 +6,11 @@ const {
   trackOrder,
   updateOrderStatus,
 } = require('../controllers/orderController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, sellerOrAdmin } = require('../middleware/authMiddleware');
 
 router.post('/', protect, createOrder);
 router.get('/history', protect, getOrderHistory);
 router.get('/track/:id', protect, trackOrder);
-router.put('/status/:id', protect, updateOrderStatus);
+router.put('/status/:id', protect, sellerOrAdmin, updateOrderStatus);
 
 module.exports = router;

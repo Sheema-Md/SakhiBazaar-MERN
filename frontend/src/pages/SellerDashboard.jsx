@@ -4,9 +4,16 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useWishlist } from '../context/WishlistContext';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../context/CartContext.jsx';
 import CategoryTreeFilter from '../components/CategoryTreeFilter';
 import ProductCard from '../components/ProductCard';
+import {
+  INDIA_STATES,
+  getIndiaDistricts,
+  getIndiaCities,
+  normalizeDeliveryLocations,
+  normalizeLocation
+} from '../utils/indiaLocations';
 import MarketPriceWidget from '../components/MarketPriceWidget';
 import {
   ShoppingBag, Edit, Trash2, CheckCircle, DollarSign, Mail, Camera,
@@ -22,32 +29,14 @@ const CATEGORY_TREE = {
   'Home Decor': ['Wall Hangings', 'Cushion Covers', 'Candles', 'Table Runners']
 };
 
-const DELIVERY_LOCATIONS = {
-  "Jammu & Kashmir": {
-    "Srinagar": ["Lal Bazar", "Hazratbal", "Downtown Srinagar", "Rajbagh", "Sonwar", "Nishat", "Shalimar", "Soura"],
-    "Budgam": ["Budgam Town", "Beerwah", "Chadoora", "Magam", "Khan Sahib"],
-    "Baramulla": ["Baramulla Town", "Sopore", "Pattan", "Tangmarg", "Uri"],
-    "Anantnag": ["Anantnag Town", "Bijbehara", "Pahalgam", "Kokernag", "Verinag"],
-    "Pulwama": ["Pulwama Town", "Pampore", "Tral", "Awantipora"],
-    "Ganderbal": ["Ganderbal Town", "Kangan", "Tullamulla"],
-    "Kupwara": ["Kupwara Town", "Handwara", "Karnah", "Lolab"]
-  },
-  "Delhi": {
-    "New Delhi": ["Connaught Place", "Chanakyapuri", "Vasant Kunj", "Saket"],
-    "North Delhi": ["Model Town", "Civil Lines", "GTB Nagar"],
-    "South Delhi": ["Hauz Khas", "Greater Kailash", "Lajpat Nagar"]
-  },
-  "Punjab": {
-    "Amritsar": ["Amritsar City", "Ajnala", "Baba Bakala"],
-    "Ludhiana": ["Ludhiana City", "Khanna", "Jagraon"]
-  }
-};
+
 
 const generateConversationId = () => {
   return `conv_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 };
 
 const SellerDashboard = () => {
+
   const { user } = useContext(AuthContext);
   const { t } = useLanguage();
   const { wishlistItems, toggleWishlist } = useWishlist();
@@ -78,7 +67,7 @@ const SellerDashboard = () => {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   // Profile settings
   const [avatar, setAvatar] = useState(() => {
     return localStorage.getItem(`sakhi_avatar_${user?._id || 'guest'}`) || '';
@@ -111,6 +100,17 @@ const SellerDashboard = () => {
     offer: false
   });
 
+  // Sync the shared header search query with seller browse state
+  useEffect(() => {
+    const urlSearch = searchParams.get('search');
+    if (urlSearch !== null) {
+      const timer = setTimeout(() => {
+        setBrowseSearch(urlSearch);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
+
   // Add Product Form States
   const [addTitle, setAddTitle] = useState('');
   const [addCategory, setAddCategory] = useState('');
@@ -124,7 +124,7 @@ const SellerDashboard = () => {
   const [addCaption, setAddCaption] = useState('');
   const [addImages, setAddImages] = useState([]);
   const [addImagesPreviews, setAddImagesPreviews] = useState([]);
-  
+
   // Tags states
   const [addTagInput, setAddTagInput] = useState('');
   const [addTags, setAddTags] = useState([]);
@@ -134,6 +134,7 @@ const SellerDashboard = () => {
   const [addLocDistrict, setAddLocDistrict] = useState('');
   const [addLocCity, setAddLocCity] = useState('');
   const [addDeliveryLocations, setAddDeliveryLocations] = useState([]);
+  const locationStates = INDIA_STATES;
 
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
@@ -308,7 +309,14 @@ const SellerDashboard = () => {
             url
           })));
           setEditTags(p.tags || []);
-          setEditDeliveryLocations(p.deliveryLocations || []);
+          const savedLocations = normalizeDeliveryLocations(p.deliveryLocations || []);
+          setEditDeliveryLocations(savedLocations);
+          const firstLocation = savedLocations[0];
+          if (firstLocation) {
+            setEditLocState(firstLocation.state);
+            setEditLocDistrict(firstLocation.district);
+            setEditLocCity(firstLocation.city);
+          }
         } catch (err) {
           console.error('Failed to fetch product details:', err.message);
         }
@@ -348,10 +356,10 @@ const SellerDashboard = () => {
   // Handle location badges
   const handleAddLocation = () => {
     if (!addLocState) return;
-    setAddDeliveryLocations(prev => [
+    setAddDeliveryLocations(prev => normalizeDeliveryLocations([
       ...prev,
-      { state: addLocState, district: addLocDistrict, city: addLocCity }
-    ]);
+      normalizeLocation({ state: addLocState, district: addLocDistrict, city: addLocCity })
+    ]));
     setAddLocState('');
     setAddLocDistrict('');
     setAddLocCity('');
@@ -363,10 +371,10 @@ const SellerDashboard = () => {
 
   const handleEditAddLocation = () => {
     if (!editLocState) return;
-    setEditDeliveryLocations(prev => [
+    setEditDeliveryLocations(prev => normalizeDeliveryLocations([
       ...prev,
-      { state: editLocState, district: editLocDistrict, city: editLocCity }
-    ]);
+      normalizeLocation({ state: editLocState, district: editLocDistrict, city: editLocCity })
+    ]));
     setEditLocState('');
     setEditLocDistrict('');
     setEditLocCity('');
@@ -580,9 +588,9 @@ const SellerDashboard = () => {
     formData.append('sku', addSku);
     formData.append('description', addDesc);
     formData.append('marketingCaption', addCaption);
-    formData.append('deliveryLocations', JSON.stringify(addDeliveryLocations));
+    formData.append('deliveryLocations', JSON.stringify(normalizeDeliveryLocations(addDeliveryLocations)));
     formData.append('tags', JSON.stringify(addTags));
-    
+
     addImages.forEach(file => {
       formData.append('images', file);
     });
@@ -639,9 +647,9 @@ const SellerDashboard = () => {
     formData.append('sku', editSku);
     formData.append('description', editDesc);
     formData.append('marketingCaption', editCaption);
-    formData.append('deliveryLocations', JSON.stringify(editDeliveryLocations));
+    formData.append('deliveryLocations', JSON.stringify(normalizeDeliveryLocations(editDeliveryLocations)));
     formData.append('tags', JSON.stringify(editTags));
-    
+
     if (editMediaItems.length === 0) {
       setFormError('Please provide at least one product image.');
       return;
@@ -799,13 +807,13 @@ const SellerDashboard = () => {
           <p className="font-semibold">{error}</p>
         </div>
       )}
-      
+
       {/* ------------------------------------------------------------- */}
       {/* VIEW: MAIN WORKSPACE DASHBOARD */}
       {/* ------------------------------------------------------------- */}
       {currentView === 'dashboard' && (
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-rose-500 to-indigo-650 p-6 sm:p-8 rounded-3xl text-white shadow-md">
+          <div className="bg-linear-to-r from-rose-500 to-indigo-650 p-6 sm:p-8 rounded-3xl text-white shadow-md">
             <h1 className="text-xl sm:text-2xl font-black">{t('hello') || 'Welcome back'}, {profileData.name || user?.name || 'Seller'}!</h1>
             <p className="text-xs text-rose-100 mt-1 max-w-sm">
               {t('welcomeDashboard') || 'Sakhi Bazaar partner dashboard. Showcase products, optimize margins, and generate marketing copy.'}
@@ -822,7 +830,7 @@ const SellerDashboard = () => {
                 <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-0.5">{products.length}</h3>
               </div>
             </div>
-            
+
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-rose-100/30 dark:border-slate-700/50 shadow-xs flex items-center space-x-4">
               <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400">
                 <CheckCircle size={22} />
@@ -863,18 +871,7 @@ const SellerDashboard = () => {
               <h2 className="text-base font-bold text-slate-800 dark:text-white">Browse Marketplace Listings</h2>
               <p className="text-xs text-slate-400 mt-0.5">Explore listed craft products across categories.</p>
             </div>
-            
-            {/* Separate Top Search Bar */}
-            <div className="relative w-full md:w-80">
-              <input
-                type="text"
-                value={browseSearch}
-                onChange={(e) => setBrowseSearch(e.target.value)}
-                placeholder="Search products..."
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none"
-              />
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            </div>
+
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
@@ -914,7 +911,7 @@ const SellerDashboard = () => {
             </div>
             <button
               onClick={() => setSearchParams({ view: 'add-product' })}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-rose-500 to-indigo-650 hover:from-rose-600 hover:to-indigo-700 shadow-md cursor-pointer"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-linear-to-r from-rose-500 to-indigo-650 hover:from-rose-600 hover:to-indigo-700 shadow-md cursor-pointer"
             >
               {t('addProduct') || 'Add Product'}
             </button>
@@ -955,11 +952,10 @@ const SellerDashboard = () => {
                         </td>
                         <td className="px-6 py-4 font-mono text-[10px] text-slate-500">{p.sku || 'N/A'}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                            p.stockStatus === 'In Stock' ? 'bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-400' :
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${p.stockStatus === 'In Stock' ? 'bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-400' :
                             p.stockStatus === 'Low Stock' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400' :
-                            'bg-red-50 text-red-750 dark:bg-red-950/20 dark:text-red-400'
-                          }`}>
+                              'bg-red-50 text-red-750 dark:bg-red-950/20 dark:text-red-400'
+                            }`}>
                             {p.stockStatus}
                           </span>
                           <span className="text-[10px] text-slate-400 ml-1.5 font-bold">({p.stockQuantity})</span>
@@ -1023,11 +1019,11 @@ const SellerDashboard = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-500">Title</label>
-                <input type="text" required value={addTitle} onChange={(e)=>setAddTitle(e.target.value)} placeholder="E.g. Pashmina Shawl" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+                <input type="text" required value={addTitle} onChange={(e) => setAddTitle(e.target.value)} placeholder="E.g. Pashmina Shawl" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500">Category</label>
-                <select required value={addCategory} onChange={(e)=>{setAddCategory(e.target.value); setAddSubcategory('');}} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer">
+                <select required value={addCategory} onChange={(e) => { setAddCategory(e.target.value); setAddSubcategory(''); }} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer">
                   <option value="">Select Category</option>
                   <option value="Clothing">Clothing</option>
                   <option value="Handmade Crafts">Handmade Crafts</option>
@@ -1041,9 +1037,9 @@ const SellerDashboard = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-500">Subcategory</label>
-                <select 
-                  value={addSubcategory} 
-                  onChange={(e)=>setAddSubcategory(e.target.value)} 
+                <select
+                  value={addSubcategory}
+                  onChange={(e) => setAddSubcategory(e.target.value)}
                   disabled={!addCategory}
                   className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer disabled:opacity-50"
                 >
@@ -1055,22 +1051,22 @@ const SellerDashboard = () => {
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500">SKU (Stock Keeping Unit)</label>
-                <input type="text" value={addSku} onChange={(e)=>setAddSku(e.target.value)} placeholder="E.g. SHAWL-PASH-RED" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+                <input type="text" value={addSku} onChange={(e) => setAddSku(e.target.value)} placeholder="E.g. SHAWL-PASH-RED" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-500">Price (₹)</label>
-                <input type="number" required value={addPrice} onChange={(e)=>setAddPrice(e.target.value)} placeholder="E.g. 1500" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+                <input type="number" required value={addPrice} onChange={(e) => setAddPrice(e.target.value)} placeholder="E.g. 1500" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500">Offer Percentage (%)</label>
-                <input type="number" min="0" max="99" value={addOfferPercentage} onChange={(e)=>setAddOfferPercentage(e.target.value)} placeholder="E.g. 10" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+                <input type="number" min="0" max="99" value={addOfferPercentage} onChange={(e) => setAddOfferPercentage(e.target.value)} placeholder="E.g. 10" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-550 dark:text-slate-400">Stock Availability</label>
-                <select value={addStockStatus} onChange={(e)=>setAddStockStatus(e.target.value)} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer">
+                <select value={addStockStatus} onChange={(e) => setAddStockStatus(e.target.value)} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer">
                   <option value="In Stock">In Stock</option>
                   <option value="Out of Stock">Out of Stock</option>
                 </select>
@@ -1079,7 +1075,7 @@ const SellerDashboard = () => {
 
             <div>
               <label className="text-xs font-bold text-slate-500">Stock Quantity</label>
-              <input type="number" min="0" value={addStockQuantity} onChange={(e)=>setAddStockQuantity(e.target.value)} placeholder="E.g. 25" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+              <input type="number" min="0" value={addStockQuantity} onChange={(e) => setAddStockQuantity(e.target.value)} placeholder="E.g. 25" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
             </div>
 
             {/* Delivery Locations Section */}
@@ -1097,7 +1093,7 @@ const SellerDashboard = () => {
                 >
                   <option value="">Select State</option>
                   <option value="Anywhere">Anywhere</option>
-                  {Object.keys(DELIVERY_LOCATIONS).map(st => (
+                  {locationStates.map(st => (
                     <option key={st} value={st}>{st}</option>
                   ))}
                 </select>
@@ -1112,7 +1108,7 @@ const SellerDashboard = () => {
                 >
                   <option value="">Select District</option>
                   {addLocState && addLocState !== 'Anywhere' && <option value="Anywhere">Anywhere</option>}
-                  {addLocState && addLocState !== 'Anywhere' && Object.keys(DELIVERY_LOCATIONS[addLocState] || {}).map(dt => (
+                  {addLocState && addLocState !== 'Anywhere' && getIndiaDistricts(addLocState).map(dt => (
                     <option key={dt} value={dt}>{dt}</option>
                   ))}
                 </select>
@@ -1124,7 +1120,7 @@ const SellerDashboard = () => {
                 >
                   <option value="">Select City/Town</option>
                   {addLocDistrict && addLocDistrict !== 'Anywhere' && addLocState !== 'Anywhere' && <option value="Anywhere">Anywhere</option>}
-                  {addLocState && addLocState !== 'Anywhere' && addLocDistrict && addLocDistrict !== 'Anywhere' && (DELIVERY_LOCATIONS[addLocState][addLocDistrict] || []).map(ct => (
+                  {addLocState && addLocDistrict && addLocDistrict !== 'Anywhere' && getIndiaCities(addLocState, addLocDistrict).map(ct => (
                     <option key={ct} value={ct}>{ct}</option>
                   ))}
                 </select>
@@ -1149,7 +1145,7 @@ const SellerDashboard = () => {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500">Search Tags</label>
               <div className="flex gap-2">
-                <input type="text" value={addTagInput} onChange={(e)=>setAddTagInput(e.target.value)} onKeyDown={(e) => { if(e.key==='Enter') { e.preventDefault(); handleAddTag(); } }} placeholder="Add product tag (press Enter)" className="flex-grow p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none text-slate-850 dark:text-slate-105" />
+                <input type="text" value={addTagInput} onChange={(e) => setAddTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }} placeholder="Add product tag (press Enter)" className="flex-grow p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none text-slate-850 dark:text-slate-105" />
                 <button type="button" onClick={handleAddTag} className="px-4 bg-slate-850 dark:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer">Add</button>
               </div>
 
@@ -1213,7 +1209,7 @@ const SellerDashboard = () => {
                   {isGeneratingDesc ? <RefreshCw size={10} className="animate-spin" /> : <Sparkles size={10} />} Write with AI
                 </button>
               </div>
-              <textarea rows={3} required value={addDesc} onChange={(e)=>setAddDesc(e.target.value)} placeholder="Story of the craft..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+              <textarea rows={3} required value={addDesc} onChange={(e) => setAddDesc(e.target.value)} placeholder="Story of the craft..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
             </div>
 
             <div>
@@ -1223,7 +1219,7 @@ const SellerDashboard = () => {
                   {isGeneratingCaption ? <RefreshCw size={10} className="animate-spin" /> : <Sparkles size={10} />} Create tags with AI
                 </button>
               </div>
-              <input type="text" value={addCaption} onChange={(e)=>setAddCaption(e.target.value)} placeholder="Instagram hashtags..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+              <input type="text" value={addCaption} onChange={(e) => setAddCaption(e.target.value)} placeholder="Instagram hashtags..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
             </div>
 
             <button type="submit" disabled={loading} className="w-full py-2.5 bg-gradient-to-r from-rose-500 to-indigo-650 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer">
@@ -1258,11 +1254,11 @@ const SellerDashboard = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-500">Title</label>
-                <input type="text" required value={editTitle} onChange={(e)=>setEditTitle(e.target.value)} placeholder="E.g. Handcrafted Box" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+                <input type="text" required value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="E.g. Handcrafted Box" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500">Category</label>
-                <select required value={editCategory} onChange={(e)=>{setEditCategory(e.target.value); setEditSubcategory('');}} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer">
+                <select required value={editCategory} onChange={(e) => { setEditCategory(e.target.value); setEditSubcategory(''); }} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer">
                   <option value="Clothing">Clothing</option>
                   <option value="Handmade Crafts">Handmade Crafts</option>
                   <option value="Food">Food</option>
@@ -1275,9 +1271,9 @@ const SellerDashboard = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-500">Subcategory</label>
-                <select 
-                  value={editSubcategory} 
-                  onChange={(e)=>setEditSubcategory(e.target.value)} 
+                <select
+                  value={editSubcategory}
+                  onChange={(e) => setEditSubcategory(e.target.value)}
                   disabled={!editCategory}
                   className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer disabled:opacity-50"
                 >
@@ -1289,22 +1285,22 @@ const SellerDashboard = () => {
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500">SKU (Stock Keeping Unit)</label>
-                <input type="text" value={editSku} onChange={(e)=>setEditSku(e.target.value)} placeholder="E.g. SHAWL-RED" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+                <input type="text" value={editSku} onChange={(e) => setEditSku(e.target.value)} placeholder="E.g. SHAWL-RED" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-500">Price (₹)</label>
-                <input type="number" required value={editPrice} onChange={(e)=>setEditPrice(e.target.value)} placeholder="E.g. 1500" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+                <input type="number" required value={editPrice} onChange={(e) => setEditPrice(e.target.value)} placeholder="E.g. 1500" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500">Offer Percentage (%)</label>
-                <input type="number" min="0" max="99" value={editOfferPercentage} onChange={(e)=>setEditOfferPercentage(e.target.value)} placeholder="E.g. 10" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+                <input type="number" min="0" max="99" value={editOfferPercentage} onChange={(e) => setEditOfferPercentage(e.target.value)} placeholder="E.g. 10" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-550 dark:text-slate-400">Stock Availability</label>
-                <select value={editStockStatus} onChange={(e)=>setEditStockStatus(e.target.value)} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer">
+                <select value={editStockStatus} onChange={(e) => setEditStockStatus(e.target.value)} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105 cursor-pointer">
                   <option value="In Stock">In Stock</option>
                   <option value="Out of Stock">Out of Stock</option>
                 </select>
@@ -1313,7 +1309,7 @@ const SellerDashboard = () => {
 
             <div>
               <label className="text-xs font-bold text-slate-500">Stock Quantity</label>
-              <input type="number" min="0" value={editStockQuantity} onChange={(e)=>setEditStockQuantity(e.target.value)} placeholder="E.g. 25" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+              <input type="number" min="0" value={editStockQuantity} onChange={(e) => setEditStockQuantity(e.target.value)} placeholder="E.g. 25" className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
             </div>
 
             {/* Delivery Locations Section */}
@@ -1331,7 +1327,7 @@ const SellerDashboard = () => {
                 >
                   <option value="">Select State</option>
                   <option value="Anywhere">Anywhere</option>
-                  {Object.keys(DELIVERY_LOCATIONS).map(st => (
+                  {locationStates.map(st => (
                     <option key={st} value={st}>{st}</option>
                   ))}
                 </select>
@@ -1346,7 +1342,7 @@ const SellerDashboard = () => {
                 >
                   <option value="">Select District</option>
                   {editLocState && editLocState !== 'Anywhere' && <option value="Anywhere">Anywhere</option>}
-                  {editLocState && editLocState !== 'Anywhere' && Object.keys(DELIVERY_LOCATIONS[editLocState] || {}).map(dt => (
+                  {editLocState && editLocState !== 'Anywhere' && getIndiaDistricts(editLocState).map(dt => (
                     <option key={dt} value={dt}>{dt}</option>
                   ))}
                 </select>
@@ -1358,15 +1354,18 @@ const SellerDashboard = () => {
                 >
                   <option value="">Select City/Town</option>
                   {editLocDistrict && editLocDistrict !== 'Anywhere' && editLocState !== 'Anywhere' && <option value="Anywhere">Anywhere</option>}
-                  {editLocState && editLocState !== 'Anywhere' && editLocDistrict && editLocDistrict !== 'Anywhere' && (DELIVERY_LOCATIONS[editLocState][editLocDistrict] || []).map(ct => (
+                  {editLocState && editLocDistrict && editLocDistrict !== 'Anywhere' && getIndiaCities(editLocState, editLocDistrict).map(ct => (
                     <option key={ct} value={ct}>{ct}</option>
                   ))}
                 </select>
               </div>
-              <button type="button" onClick={handleEditAddLocation} className="px-3 py-1.5 bg-slate-850 hover:bg-slate-950 dark:bg-slate-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer">
+              <button
+                type="button"
+                onClick={handleEditAddLocation}
+                className="px-3 py-1.5 bg-white hover:bg-black text-black hover:text-white dark:bg-slate-800 dark:text-white dark:hover:bg-black dark:hover:text-white border border-slate-300 dark:border-slate-600 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+              >
                 + Add Location
               </button>
-
               {editDeliveryLocations.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200/50 mt-2">
                   {editDeliveryLocations.map((loc, index) => (
@@ -1383,7 +1382,7 @@ const SellerDashboard = () => {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500">Search Tags</label>
               <div className="flex gap-2">
-                <input type="text" value={editTagInput} onChange={(e)=>setEditTagInput(e.target.value)} onKeyDown={(e) => { if(e.key==='Enter') { e.preventDefault(); handleEditAddTag(); } }} placeholder="Add product tag (press Enter)" className="flex-grow p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none text-slate-850 dark:text-slate-105" />
+                <input type="text" value={editTagInput} onChange={(e) => setEditTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleEditAddTag(); } }} placeholder="Add product tag (press Enter)" className="flex-grow p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none text-slate-850 dark:text-slate-105" />
                 <button type="button" onClick={handleEditAddTag} className="px-4 bg-slate-850 dark:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer">Add</button>
               </div>
 
@@ -1418,9 +1417,8 @@ const SellerDashboard = () => {
                     >
                       <X size={10} />
                     </button>
-                    <span className={`absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-bold text-white select-none ${
-                      item.isExisting ? 'bg-indigo-650/80' : 'bg-green-600/80'
-                    }`}>
+                    <span className={`absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-bold text-white select-none ${item.isExisting ? 'bg-indigo-650/80' : 'bg-green-600/80'
+                      }`}>
                       {item.isExisting ? 'Saved' : 'New'}
                     </span>
                     <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/75 backdrop-blur-xs p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1454,7 +1452,7 @@ const SellerDashboard = () => {
                   {isGeneratingDesc ? <RefreshCw size={10} className="animate-spin" /> : <Sparkles size={10} />} Write with AI
                 </button>
               </div>
-              <textarea rows={3} required value={editDesc} onChange={(e)=>setEditDesc(e.target.value)} placeholder="Story of the craft..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+              <textarea rows={3} required value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Story of the craft..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
             </div>
 
             <div>
@@ -1464,7 +1462,7 @@ const SellerDashboard = () => {
                   {isGeneratingCaption ? <RefreshCw size={10} className="animate-spin" /> : <Sparkles size={10} />} Create tags with AI
                 </button>
               </div>
-              <input type="text" value={editCaption} onChange={(e)=>setEditCaption(e.target.value)} placeholder="Instagram hashtags..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
+              <input type="text" value={editCaption} onChange={(e) => setEditCaption(e.target.value)} placeholder="Instagram hashtags..." className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-850 dark:text-slate-105" />
             </div>
 
             <div className="flex gap-2 justify-end pt-3">
@@ -1631,11 +1629,10 @@ const SellerDashboard = () => {
                         <p className="text-[10px] text-slate-400 mt-0.5">Customer: {s.customer?.name} ({s.customer?.email})</p>
                       </div>
                       <div className="text-right">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                          s.shipmentStatus === 'Delivered' ? 'bg-green-100 text-green-800' :
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${s.shipmentStatus === 'Delivered' ? 'bg-green-100 text-green-800' :
                           s.shipmentStatus === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-indigo-100 text-indigo-800'
-                        }`}>
+                            'bg-indigo-100 text-indigo-800'
+                          }`}>
                           {s.shipmentStatus || 'Pending'}
                         </span>
                         {s.trackingNumber && <p className="text-[9px] font-mono text-slate-400 mt-1">TRACKING ID: {s.trackingNumber}</p>}
@@ -1733,7 +1730,7 @@ const SellerDashboard = () => {
               </p>
               <p className="text-[10px] text-slate-500 font-semibold">Charged at settlement verification processing.</p>
             </div>
-            
+
             <div className="bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700 p-6 rounded-3xl shadow-sm space-y-4">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Net Partner Income</h3>
               <p className="text-2xl font-black text-green-600">
@@ -1754,7 +1751,7 @@ const SellerDashboard = () => {
           {/* Graphical Analytics Charts (Pure Tailwind/HTML elements) */}
           <div className="bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700 p-6 rounded-3xl shadow-sm space-y-6">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><TrendingUp size={16} className="text-rose-500" /> Platform Sales Performance Metrics</h3>
-            
+
             {/* Visual HTML Bar Chart */}
             <div className="space-y-4">
               <div>
@@ -1885,7 +1882,7 @@ const SellerDashboard = () => {
           <form onSubmit={handleProfileSave} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500">Entrepreneur Name</label>
-              <input type="text" value={profileData.name} onChange={(e)=>setProfileData({...profileData, name: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 rounded-xl text-xs text-slate-850 dark:text-slate-105 focus:outline-none focus:ring-2 focus:ring-rose-500" />
+              <input type="text" value={profileData.name} onChange={(e) => setProfileData({ ...profileData, name: e.target.value })} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 rounded-xl text-xs text-slate-850 dark:text-slate-105 focus:outline-none focus:ring-2 focus:ring-rose-500" />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500">Email Address</label>
@@ -1893,11 +1890,11 @@ const SellerDashboard = () => {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500">Contact Phone</label>
-              <input type="text" value={profileData.phone} onChange={(e)=>setProfileData({...profileData, phone: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 rounded-xl text-xs text-slate-850 dark:text-slate-105 focus:outline-none focus:ring-2 focus:ring-rose-500" />
+              <input type="text" value={profileData.phone} onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 rounded-xl text-xs text-slate-850 dark:text-slate-105 focus:outline-none focus:ring-2 focus:ring-rose-500" />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500">Storefront Address</label>
-              <input type="text" value={profileData.address} onChange={(e)=>setProfileData({...profileData, address: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 rounded-xl text-xs text-slate-850 dark:text-slate-105 focus:outline-none focus:ring-2 focus:ring-rose-500" />
+              <input type="text" value={profileData.address} onChange={(e) => setProfileData({ ...profileData, address: e.target.value })} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 rounded-xl text-xs text-slate-850 dark:text-slate-105 focus:outline-none focus:ring-2 focus:ring-rose-500" />
             </div>
             <div className="sm:col-span-2 flex justify-end">
               <button type="submit" disabled={loading} className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs">
@@ -1927,11 +1924,11 @@ const SellerDashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500">{t('newPassword')}</label>
-                  <input type="password" required value={passwordData.newPassword} onChange={(e)=>setPasswordData({...passwordData, newPassword: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500" />
+                  <input type="password" required value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500">{t('confirmPassword')}</label>
-                  <input type="password" required value={passwordData.confirmPassword} onChange={(e)=>setPasswordData({...passwordData, confirmPassword: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500" />
+                  <input type="password" required value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500" />
                 </div>
               </div>
               <button type="submit" className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs">

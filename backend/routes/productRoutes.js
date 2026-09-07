@@ -12,7 +12,7 @@ const {
   createProductReview,
   searchProducts,
 } = require('../controllers/productController');
-const { protect, seller } = require('../middleware/authMiddleware');
+const { protect, seller, sellerOrAdmin } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
 // Define multi-upload fields configuration
@@ -38,9 +38,11 @@ const reviewUpload = upload.fields([
 ]);
 
 // Protected editing routes
+// create: seller only (new products can only be created by sellers)
 router.post('/', protect, seller, productUpload, createProduct);
-router.put('/:id', protect, productUpload, updateProduct);
-router.delete('/:id', protect, deleteProduct);
+// update/delete: approved seller (owns product) or admin — ownership verified inside controllers
+router.put('/:id', protect, sellerOrAdmin, productUpload, updateProduct);
+router.delete('/:id', protect, sellerOrAdmin, deleteProduct);
 router.post('/:id/review', protect, reviewUpload, createProductReview);
 
 module.exports = router;

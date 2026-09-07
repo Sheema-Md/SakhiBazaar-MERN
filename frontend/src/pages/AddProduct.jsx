@@ -1,11 +1,19 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
-import { 
-  PlusCircle, ArrowLeft, Image as ImageIcon, Sparkles, 
-  AlertCircle, RefreshCw, MapPin, X, ChevronLeft, ChevronRight 
+import {
+  PlusCircle, ArrowLeft, Image as ImageIcon, Sparkles,
+  AlertCircle, RefreshCw, MapPin, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import SeasonalPricingGuide from '../components/SeasonalPricingGuide';
+import {
+  INDIA_STATES,
+  getIndiaDistricts,
+  getIndiaCities,
+  normalizeDeliveryLocations,
+  normalizeLocation
+} from '../utils/indiaLocations';
+
 
 const CATEGORY_TREE = {
   'Clothing': ['Sarees', 'Kurtis', 'Shawls', 'Kids Wear'],
@@ -15,30 +23,9 @@ const CATEGORY_TREE = {
   'Home Decor': ['Wall Hangings', 'Cushion Covers', 'Candles', 'Table Runners']
 };
 
-const DELIVERY_LOCATIONS = {
-  "Jammu & Kashmir": {
-    "Srinagar": ["Lal Bazar", "Hazratbal", "Downtown Srinagar", "Rajbagh", "Sonwar", "Nishat", "Shalimar", "Soura"],
-    "Budgam": ["Budgam Town", "Beerwah", "Chadoora", "Magam", "Khan Sahib"],
-    "Baramulla": ["Baramulla Town", "Sopore", "Pattan", "Tangmarg", "Uri"],
-    "Anantnag": ["Anantnag Town", "Bijbehara", "Pahalgam", "Kokernag", "Verinag"],
-    "Pulwama": ["Pulwama Town", "Pampore", "Tral", "Awantipora"],
-    "Ganderbal": ["Ganderbal Town", "Kangan", "Tullamulla"],
-    "Kupwara": ["Kupwara Town", "Handwara", "Karnah", "Lolab"]
-  },
-  "Delhi": {
-    "New Delhi": ["Connaught Place", "Chanakyapuri", "Vasant Kunj", "Saket"],
-    "North Delhi": ["Model Town", "Civil Lines", "GTB Nagar"],
-    "South Delhi": ["Hauz Khas", "Greater Kailash", "Lajpat Nagar"]
-  },
-  "Punjab": {
-    "Amritsar": ["Amritsar City", "Ajnala", "Baba Bakala"],
-    "Ludhiana": ["Ludhiana City", "Khanna", "Jagraon"]
-  }
-};
-
 const AddProduct = () => {
   const navigate = useNavigate();
-  
+
   // Form State
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -61,10 +48,10 @@ const AddProduct = () => {
   const [tags, setTags] = useState([]);
 
   // Delivery target locations
+  const [deliveryLocations, setDeliveryLocations] = useState([]);
   const [locState, setLocState] = useState('');
   const [locDistrict, setLocDistrict] = useState('');
   const [locCity, setLocCity] = useState('');
-  const [deliveryLocations, setDeliveryLocations] = useState([]);
 
   // Status State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -168,10 +155,31 @@ const AddProduct = () => {
   // Location Handlers
   const handleAddLocation = () => {
     if (!locState.trim()) return;
-    setDeliveryLocations([
-      ...deliveryLocations,
-      { state: locState.trim(), district: locDistrict.trim(), city: locCity.trim() }
-    ]);
+
+    const [newLocation] = normalizeDeliveryLocations([normalizeLocation({
+      state: locState,
+      district: locDistrict,
+      city: locCity
+    })]);
+
+    if (!newLocation) {
+      setError('Please select a valid India location.');
+      return;
+    }
+
+    const exists = deliveryLocations.some(
+      (loc) =>
+        normalizeLocation(loc).state === newLocation.state &&
+        normalizeLocation(loc).district === newLocation.district &&
+        normalizeLocation(loc).city === newLocation.city
+    );
+
+    if (exists) {
+      setError('This delivery location has already been added.');
+      return;
+    }
+
+    setDeliveryLocations((prev) => [...prev, newLocation]);
     setLocState('');
     setLocDistrict('');
     setLocCity('');
@@ -258,7 +266,7 @@ const AddProduct = () => {
     formData.append('sku', sku);
     formData.append('description', description);
     formData.append('marketingCaption', marketingCaption);
-    formData.append('deliveryLocations', JSON.stringify(deliveryLocations));
+    formData.append('deliveryLocations', JSON.stringify(normalizeDeliveryLocations(deliveryLocations)));
     formData.append('tags', JSON.stringify(tags));
 
     images.forEach(file => {
@@ -316,7 +324,7 @@ const AddProduct = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            
+
             {/* Title & Category */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
@@ -441,13 +449,12 @@ const AddProduct = () => {
             {/* Multiple Images Drag & Drop Manager */}
             <div>
               <label className="block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider mb-1.5">Product Images (Upload up to 10 files) *</label>
-              
-              <div 
-                className={`w-full border-2 border-dashed rounded-2xl p-6 text-center transition-all ${
-                  dragActive 
-                    ? 'border-rose-500 bg-rose-50/20 dark:bg-rose-955/10' 
-                    : 'border-slate-250 dark:border-slate-700 hover:border-rose-400'
-                }`}
+
+              <div
+                className={`w-full border-2 border-dashed rounded-2xl p-6 text-center transition-all ${dragActive
+                  ? 'border-rose-500 bg-rose-50/20 dark:bg-rose-955/10'
+                  : 'border-slate-250 dark:border-slate-700 hover:border-rose-400'
+                  }`}
                 onDragEnter={handleDrag}
                 onDragOver={handleDrag}
                 onDragLeave={handleDrag}
@@ -461,8 +468,8 @@ const AddProduct = () => {
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                
-                <label 
+
+                <label
                   htmlFor="image-upload-input"
                   className="cursor-pointer flex flex-col items-center justify-center space-y-2 group"
                 >
@@ -480,12 +487,12 @@ const AddProduct = () => {
               {imagesPreviews.length > 0 && (
                 <div className="mt-4 grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 bg-slate-50 dark:bg-slate-900/30 rounded-2xl border border-slate-100 dark:border-slate-750">
                   {imagesPreviews.map((src, idx) => (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className="aspect-square relative rounded-xl overflow-hidden border border-slate-250 dark:border-slate-700 bg-white dark:bg-slate-800 group shadow-sm"
                     >
                       <img src={src} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
-                      
+
                       {/* Delete Overlay Button */}
                       <button
                         type="button"
@@ -528,7 +535,7 @@ const AddProduct = () => {
                 <MapPin size={14} className="text-rose-500" />
                 Delivery Target Locations (Geographical Shipping Filters)
               </label>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <select
                   value={locState}
@@ -541,7 +548,7 @@ const AddProduct = () => {
                 >
                   <option value="">Select State</option>
                   <option value="Anywhere">Anywhere</option>
-                  {Object.keys(DELIVERY_LOCATIONS).map(st => (
+                  {INDIA_STATES.map((st) => (
                     <option key={st} value={st}>{st}</option>
                   ))}
                 </select>
@@ -556,7 +563,7 @@ const AddProduct = () => {
                 >
                   <option value="">Select District</option>
                   {locState && locState !== 'Anywhere' && <option value="Anywhere">Anywhere</option>}
-                  {locState && locState !== 'Anywhere' && Object.keys(DELIVERY_LOCATIONS[locState] || {}).map(dt => (
+                  {locState && locState !== 'Anywhere' && getIndiaDistricts(locState).map((dt) => (
                     <option key={dt} value={dt}>{dt}</option>
                   ))}
                 </select>
@@ -568,31 +575,31 @@ const AddProduct = () => {
                 >
                   <option value="">Select City/Town</option>
                   {locDistrict && locDistrict !== 'Anywhere' && locState !== 'Anywhere' && <option value="Anywhere">Anywhere</option>}
-                  {locState && locState !== 'Anywhere' && locDistrict && locDistrict !== 'Anywhere' && (DELIVERY_LOCATIONS[locState][locDistrict] || []).map(ct => (
+                  {locState && locState !== 'Anywhere' && locDistrict && locDistrict !== 'Anywhere' && getIndiaCities(locState, locDistrict).map((ct) => (
                     <option key={ct} value={ct}>{ct}</option>
                   ))}
                 </select>
               </div>
 
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleAddLocation}
                 className="px-4 py-2 bg-slate-850 hover:bg-slate-900 dark:bg-slate-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer inline-flex items-center gap-1"
               >
-                + Add Target Location
+                + Add Delivery Location
               </button>
 
               {deliveryLocations.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-250/50 mt-2">
                   {deliveryLocations.map((loc, index) => (
-                    <span 
-                      key={index} 
+                    <span
+                      key={index}
                       className="inline-flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-450 border border-rose-100 dark:border-rose-900/40 px-2.5 py-1 rounded-xl text-[10px] font-bold"
                     >
                       {loc.state} {loc.district ? `> ${loc.district}` : ''} {loc.city ? `> ${loc.city}` : ''}
-                      <button 
-                        type="button" 
-                        onClick={() => handleRemoveLocation(index)} 
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLocation(index)}
                         className="text-red-500 hover:text-red-750 font-black cursor-pointer text-xs"
                       >
                         &times;
@@ -632,14 +639,14 @@ const AddProduct = () => {
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {tags.map((tag) => (
-                    <span 
-                      key={tag} 
+                    <span
+                      key={tag}
                       className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-750 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 px-2 py-0.5 rounded-lg text-[10px] font-bold"
                     >
                       #{tag}
-                      <button 
-                        type="button" 
-                        onClick={() => handleRemoveTag(tag)} 
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
                         className="text-slate-400 hover:text-red-500 font-bold cursor-pointer"
                       >
                         &times;

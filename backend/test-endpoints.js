@@ -118,8 +118,8 @@ async function runAllTests() {
     console.log('   ❌ FAILED with connection error.');
   }
 
-  // 4. Register & login admin (port 5001)
-  console.log('\n📋 5. Registering Admin (POST /api/admin/auth/register)...');
+  // 4. Verify Admin Registration is Blocked & Admin Login Works (port 5001)
+  console.log('\n📋 5. Verifying Admin Public Registration is Blocked (POST /api/admin/auth/register)...');
   try {
     const regAdmin = await makeRequest(5001, '/api/admin/auth/register', 'POST', {}, {
       name: 'Test Admin',
@@ -129,14 +129,48 @@ async function runAllTests() {
       phoneNumber: '9876543210',
       aadhaarNumber: '987654321098'
     });
-    if (regAdmin.statusCode === 201 && regAdmin.body.token) {
-      adminToken = regAdmin.body.token;
-      console.log('   ✅ SUCCESS: Admin registered on port 5001.');
+    if (regAdmin.statusCode === 404) {
+      console.log('   ✅ SUCCESS: Public admin registration endpoint is blocked/disabled (Status 404).');
     } else {
-      console.log('   ❌ FAILED:', regAdmin.body);
+      console.log('   ❌ FAILED: Endpoint should not be accessible! Status:', regAdmin.statusCode);
     }
   } catch (err) {
-    console.log('   ❌ FAILED with connection error. Is the admin server running on port 5001?');
+    console.log('   ❌ Connection error testing admin registration.');
+  }
+
+  console.log('\n📋 5b. Verifying Main Auth Register Rejects role=\'admin\' (POST /api/auth/register)...');
+  try {
+    const regAdminMain = await makeRequest(5000, '/api/auth/register', 'POST', {}, {
+      name: 'Fake Admin',
+      email: `fake_admin_${timestamp}@example.com`,
+      password: 'Password@123',
+      confirmPassword: 'Password@123',
+      role: 'admin',
+      phoneNumber: '9876543210'
+    });
+    if (regAdminMain.statusCode === 400) {
+      console.log('   ✅ SUCCESS: Main registration rejected role=\'admin\' with status 400.');
+    } else {
+      console.log('   ❌ FAILED: Main registration should have rejected role=\'admin\', got:', regAdminMain.statusCode);
+    }
+  } catch (err) {
+    console.log('   ❌ Connection error testing main registration role rejection.');
+  }
+
+  console.log('\n📋 5c. Logging in Existing Admin (POST /api/admin/auth/login)...');
+  try {
+    const loginAdminRes = await makeRequest(5001, '/api/admin/auth/login', 'POST', {}, {
+      emailOrUsername: 'admin@sakhibazaar.com',
+      password: 'Admin@Password123'
+    });
+    if (loginAdminRes.statusCode === 200 && loginAdminRes.body.token) {
+      adminToken = loginAdminRes.body.token;
+      console.log('   ✅ SUCCESS: Existing Admin logged in successfully on port 5001.');
+    } else {
+      console.log('   ℹ️ Note: Could not login default admin (possibly password changed or DB not running):', loginAdminRes.body);
+    }
+  } catch (err) {
+    console.log('   ❌ Connection error logging in admin.');
   }
 
   // 5. Test get products & search

@@ -68,11 +68,10 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = async (role) => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const { displayName, email } = result.user;
+      const idToken = await result.user.getIdToken();
 
       const response = await axios.post(`${API_URL}/google-login`, {
-        name: displayName,
-        email,
+        idToken,
         role: role || 'customer'
       });
 

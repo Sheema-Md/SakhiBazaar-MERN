@@ -5,13 +5,13 @@ import { AuthContext } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../context/CartContext.jsx';
 import CategoryTreeFilter from '../components/CategoryTreeFilter';
 import ProductCard from '../components/ProductCard';
 import DeliveryTrackingUI from '../components/DeliveryTrackingUI';
 import {
   ShoppingBag, Heart, Star, CheckCircle, MessageSquare, Edit2,
-  Camera, ShoppingCart, Search, Trash, Bell, MapPin, Sparkles, ShieldCheck, RefreshCw, Printer
+  Camera, ShoppingCart, Trash, Bell, MapPin, Sparkles, ShieldCheck, RefreshCw, Printer
 } from 'lucide-react';
 
 const generateConversationId = () => {
@@ -32,7 +32,7 @@ const CustomerDashboard = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+
   // Profile avatar
   const [avatar, setAvatar] = useState(() => {
     return localStorage.getItem(`sakhi_avatar_${user?._id || 'guest'}`) || '';
@@ -323,23 +323,16 @@ const CustomerDashboard = () => {
     setCheckoutSubmitting(true);
     try {
       const addressString = `${checkoutForm.name}, Address: ${checkoutForm.address}, City: ${checkoutForm.city}, State: ${checkoutForm.state}, ZIP: ${checkoutForm.zip}, Phone: ${checkoutForm.phone}`;
-      
+
       const orderProducts = cartItems.map(item => ({
         product: item.product._id,
-        quantity: item.quantity,
-        price: item.product.price
+        quantity: item.quantity
       }));
-
-      const total = getCartTotal();
-      const shipping = total > 1000 ? 0 : 99;
-      const gst = Math.round(total * 0.05);
-      const grandTotal = total + shipping + gst;
 
       await axios.post(
         'http://localhost:5000/api/orders',
         {
           products: orderProducts,
-          totalAmount: grandTotal,
           shippingAddress: addressString
         },
         { headers: { Authorization: `Bearer ${user.token}` } }
@@ -360,7 +353,7 @@ const CustomerDashboard = () => {
 
   return (
     <div className="space-y-8 animate-fadeIn text-slate-800 dark:text-slate-100 transition-colors duration-300">
-      
+
       {/* ----------------------------------------------------------------- */}
       {/* VIEW: GENERAL DASHBOARD OVERVIEW */}
       {/* ----------------------------------------------------------------- */}
@@ -417,9 +410,8 @@ const CustomerDashboard = () => {
                         <td className="py-3">{new Date(o.createdAt).toLocaleDateString()}</td>
                         <td className="py-3 font-bold">₹{o.totalAmount}</td>
                         <td className="py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                            o.orderStatus === 'Delivered' ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'
-                          }`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${o.orderStatus === 'Delivered' ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'
+                            }`}>
                             {o.orderStatus}
                           </span>
                         </td>
@@ -456,17 +448,8 @@ const CustomerDashboard = () => {
               <h2 className="text-base font-bold text-slate-800 dark:text-white">Browse Marketplace Listings</h2>
               <p className="text-xs text-slate-400 mt-0.5">Explore listed craft products across categories.</p>
             </div>
-            
-            <div className="relative w-full md:w-80">
-              <input
-                type="text"
-                value={browseSearch}
-                onChange={(e) => setBrowseSearch(e.target.value)}
-                placeholder="Search products..."
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 text-xs rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none"
-              />
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            </div>
+
+
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
@@ -528,9 +511,8 @@ const CustomerDashboard = () => {
                       </div>
                       <div>
                         <p className="text-[10px] text-slate-400 uppercase tracking-wider">Status</p>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full mt-0.5 text-[9px] uppercase font-bold tracking-wider ${
-                          order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'
-                        }`}>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full mt-0.5 text-[9px] uppercase font-bold tracking-wider ${order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'
+                          }`}>
                           {order.orderStatus}
                         </span>
                       </div>
@@ -667,9 +649,8 @@ const CustomerDashboard = () => {
                   <div
                     key={o._id}
                     onClick={() => handleTrackOrder(o._id)}
-                    className={`p-4 bg-white dark:bg-slate-800 border rounded-2xl cursor-pointer transition-all shadow-xs ${
-                      orderTracking?._id === o._id ? 'border-rose-500 ring-2 ring-rose-500/10' : 'border-rose-100/20 dark:border-slate-700'
-                    }`}
+                    className={`p-4 bg-white dark:bg-slate-800 border rounded-2xl cursor-pointer transition-all shadow-xs ${orderTracking?._id === o._id ? 'border-rose-500 ring-2 ring-rose-500/10' : 'border-rose-100/20 dark:border-slate-700'
+                      }`}
                   >
                     <div className="flex justify-between items-center text-xs font-bold">
                       <span className="font-mono text-rose-500">Order #{o._id.slice(-6)}</span>
@@ -818,31 +799,31 @@ const CustomerDashboard = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-bold text-slate-500">Receiver Name</label>
-                        <input type="text" required value={checkoutForm.name} onChange={(e) => setCheckoutForm({...checkoutForm, name: e.target.value})} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
+                        <input type="text" required value={checkoutForm.name} onChange={(e) => setCheckoutForm({ ...checkoutForm, name: e.target.value })} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-slate-500">Phone Number</label>
-                        <input type="text" required value={checkoutForm.phone} onChange={(e) => setCheckoutForm({...checkoutForm, phone: e.target.value})} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
+                        <input type="text" required value={checkoutForm.phone} onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
                       </div>
                     </div>
 
                     <div>
                       <label className="text-[10px] font-bold text-slate-500">Street Address</label>
-                      <input type="text" required value={checkoutForm.address} onChange={(e) => setCheckoutForm({...checkoutForm, address: e.target.value})} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
+                      <input type="text" required value={checkoutForm.address} onChange={(e) => setCheckoutForm({ ...checkoutForm, address: e.target.value })} className="w-full mt-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
                     </div>
 
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="text-[10px] font-bold text-slate-500">City</label>
-                        <input type="text" required value={checkoutForm.city} onChange={(e) => setCheckoutForm({...checkoutForm, city: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
+                        <input type="text" required value={checkoutForm.city} onChange={(e) => setCheckoutForm({ ...checkoutForm, city: e.target.value })} className="w-full mt-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-slate-500">State</label>
-                        <input type="text" required value={checkoutForm.state} onChange={(e) => setCheckoutForm({...checkoutForm, state: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
+                        <input type="text" required value={checkoutForm.state} onChange={(e) => setCheckoutForm({ ...checkoutForm, state: e.target.value })} className="w-full mt-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-slate-500">Postal ZIP</label>
-                        <input type="text" required value={checkoutForm.zip} onChange={(e) => setCheckoutForm({...checkoutForm, zip: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
+                        <input type="text" required value={checkoutForm.zip} onChange={(e) => setCheckoutForm({ ...checkoutForm, zip: e.target.value })} className="w-full mt-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
                       </div>
                     </div>
 
@@ -861,7 +842,7 @@ const CustomerDashboard = () => {
               <div className="lg:col-span-1">
                 <div className="bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700 p-6 rounded-3xl shadow-sm space-y-4">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-rose-50 dark:border-slate-750 pb-2 flex items-center gap-1"><Sparkles size={12} className="text-yellow-500" /> Order Summary</h3>
-                  
+
                   <div className="space-y-3 text-xs font-semibold">
                     <div className="flex justify-between text-slate-500">
                       <span>Total Price ({getCartCount()} items)</span>
@@ -1044,22 +1025,20 @@ const CustomerDashboard = () => {
             </h3>
             <div className="flex gap-2">
               <button
-                onClick={() => { if(theme==='dark') toggleTheme(); }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold border ${
-                  theme === 'light'
-                    ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-250 text-rose-600 shadow-xs'
-                    : 'bg-transparent text-slate-400 hover:bg-slate-55 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'
-                } cursor-pointer`}
+                onClick={() => { if (theme === 'dark') toggleTheme(); }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold border ${theme === 'light'
+                  ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-250 text-rose-600 shadow-xs'
+                  : 'bg-transparent text-slate-400 hover:bg-slate-55 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'
+                  } cursor-pointer`}
               >
                 Light
               </button>
               <button
-                onClick={() => { if(theme==='light') toggleTheme(); }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold border ${
-                  theme === 'dark'
-                    ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-250 text-rose-600 shadow-xs'
-                    : 'bg-transparent text-slate-400 hover:bg-slate-55 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'
-                } cursor-pointer`}
+                onClick={() => { if (theme === 'light') toggleTheme(); }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold border ${theme === 'dark'
+                  ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-250 text-rose-600 shadow-xs'
+                  : 'bg-transparent text-slate-400 hover:bg-slate-55 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'
+                  } cursor-pointer`}
               >
                 Dark
               </button>

@@ -24,6 +24,15 @@ const orderSchema = new mongoose.Schema({
       },
     },
   ],
+  subtotal: {
+    type: Number,
+  },
+  gst: {
+    type: Number,
+  },
+  shippingFee: {
+    type: Number,
+  },
   totalAmount: {
     type: Number,
     required: true,

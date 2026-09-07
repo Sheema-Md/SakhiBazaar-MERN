@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../context/CartContext.jsx';
 import { useLanguage } from '../context/LanguageContext';
 import { ShoppingBag, LogOut, LayoutDashboard, PlusCircle, MessageSquare, ShoppingCart, Globe } from 'lucide-react';
 
@@ -53,16 +53,16 @@ const Navbar = () => {
               </select>
             </div>
 
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold transition-colors"
             >
               {t('browse')}
             </Link>
- 
+
             {user && (
-              <Link 
-                to="/chat" 
+              <Link
+                to="/chat"
                 className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
               >
                 <MessageSquare size={18} />
@@ -70,8 +70,8 @@ const Navbar = () => {
               </Link>
             )}
 
-            <Link 
-              to="/cart" 
+            <Link
+              to="/cart"
               className="text-gray-800 dark:text-white hover:text-rose-600 p-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors relative"
               title={t('shoppingCart')}
             >
@@ -82,20 +82,20 @@ const Navbar = () => {
                 </span>
               )}
             </Link>
- 
+
             {user ? (
               <>
                 {user.role === 'seller' && (
                   <>
-                    <Link 
-                      to="/dashboard" 
+                    <Link
+                      to="/dashboard"
                       className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
                     >
                       <LayoutDashboard size={18} />
                       <span>{t('dashboard')}</span>
                     </Link>
-                    <Link 
-                      to="/add-product" 
+                    <Link
+                      to="/add-product"
                       className="bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
                     >
                       <PlusCircle size={18} />
@@ -105,8 +105,8 @@ const Navbar = () => {
                 )}
 
                 {user.role === 'customer' && (
-                  <Link 
-                    to="/customer-dashboard" 
+                  <Link
+                    to="/customer-dashboard"
                     className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
                   >
                     <LayoutDashboard size={18} />
@@ -115,8 +115,8 @@ const Navbar = () => {
                 )}
 
                 {user.role === 'admin' && (
-                  <a 
-                    href="http://localhost:5174" 
+                  <a
+                    href="http://localhost:5174"
                     className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
                   >
                     <LayoutDashboard size={18} />
@@ -138,7 +138,7 @@ const Navbar = () => {
                     </span>
                   </div>
                 </div>
- 
+
                 {/* Logout Button */}
                 <button
                   onClick={handleLogout}

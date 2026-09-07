@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const { verifyFirebaseIdToken } = require('../config/firebaseAuth');
 
 // Helper to safely dispatch emails
 const sendEmailHelper = async (to, subject, text, html) => {
@@ -59,6 +60,14 @@ const registerUser = async (req, res) => {
     // Validation
     if (!name || !email || !password || !confirmPassword || !role) {
       return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+
+    const normalizedRole = role.toString().trim().toLowerCase();
+    if (normalizedRole === 'admin') {
+      return res.status(400).json({ message: 'Administrator registration is not permitted via this endpoint' });
+    }
+    if (!['customer', 'seller'].includes(normalizedRole)) {
+      return res.status(400).json({ message: 'Invalid role specified. Allowed roles are: customer, seller' });
     }
 
     if (password !== confirmPassword) {
@@ -158,61 +167,100 @@ const registerUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 // @desc    Authenticate user & get token (supports Email or Username login)
 // @route   POST /api/auth/login
 // @access  Public
 const loginUser = async (req, res) => {
   try {
     const { email, loginId, password } = req.body;
-    const identifier = loginId || email;
+    const identifier = (loginId || email || '').trim();
 
-    // Validation
-    if (!identifier || !password) {
-      return res.status(400).json({ message: 'Please provide email or username, and password' });
+    // Validate identifier
+    if (!identifier) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter your email address or username.'
+      });
     }
 
-    const trimmedIdentifier = identifier.trim();
-    console.log('Login attempt identifier:', trimmedIdentifier);
+    // Validate password
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter your password.'
+      });
+    }
 
-    // Check for user
+    // Find account by email OR username
     const user = await User.findOne({
       $or: [
-        { email: trimmedIdentifier.toLowerCase() },
-        { username: trimmedIdentifier.toLowerCase() }
+        { email: identifier.toLowerCase() },
+        { username: identifier.toLowerCase() }
       ]
     });
 
+    // Account does not exist
     if (!user) {
-      console.log(`Login failed: User not found for identifier "${trimmedIdentifier}"`);
-    } else {
-      const match = await user.matchPassword(password);
-      console.log(`Login user found: "${user.email}". Password match:`, match);
+      return res.status(401).json({
+        success: false,
+        message: 'No account was found with this email address or username.'
+      });
     }
 
-    if (user && (await user.matchPassword(password))) {
-      res.json({
-        _id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        phoneNumber: user.phoneNumber,
-        aadhaarNumber: user.aadhaarNumber,
-        status: user.status,
-        address: user.address,
-        avatar: user.avatar,
-        language: user.language || 'en',
-        themePreference: user.themePreference || 'light',
-        token: generateToken(user._id),
+    // Suspended account
+    if (user.status === 'suspended') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been suspended. Please contact Sakhi Bazaar support.'
       });
-    } else {
-      res.status(401).json({ message: 'Invalid email/username or password' });
     }
+
+    // Pending account
+    if (user.status === 'pending') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is awaiting approval. Please try again after your account has been approved.'
+      });
+    }
+
+    // Verify password
+    const passwordMatches = await user.matchPassword(password);
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect Credentials.'
+      });
+    }
+
+    // Successful login
+    return res.json({
+      success: true,
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      phoneNumber: user.phoneNumber,
+      aadhaarNumber: user.aadhaarNumber,
+      status: user.status,
+      address: user.address,
+      avatar: user.avatar,
+      language: user.language || 'en',
+      themePreference: user.themePreference || 'light',
+      token: generateToken(user._id),
+    });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('loginUser error:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to sign in right now. Please try again later.'
+    });
   }
 };
+
 
 // @desc    Get user profile
 // @route   GET /api/auth/profile
@@ -441,27 +489,53 @@ const resetPassword = async (req, res) => {
   }
 };
 
-// @desc    Authenticate/Register user via Google
+// @desc    Authenticate/Register user via verified Google/Firebase ID token
 // @route   POST /api/auth/google-login
 // @access  Public
 const googleLogin = async (req, res) => {
   try {
-    const { name, email, role } = req.body;
+    const { idToken, role } = req.body;
 
-    if (!email || !name) {
-      return res.status(400).json({ message: 'Missing Google user information' });
+    if (!idToken) {
+      return res.status(401).json({ message: 'Authentication token is required' });
     }
 
-    // Check if user already exists
-    let user = await User.findOne({ email });
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'sakhibazaar-8c24e';
+    const verification = await verifyFirebaseIdToken(idToken, projectId);
 
-    if (!user) {
+    if (!verification.valid) {
+      return res.status(401).json({ message: `Authentication failed: ${verification.error}` });
+    }
+
+    const { email, name, picture } = verification.user;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Authentication token does not contain a verified email address' });
+    }
+
+    const verifiedEmail = email.toLowerCase().trim();
+
+    // Check if user already exists
+    let user = await User.findOne({ email: verifiedEmail });
+
+    if (user) {
+      // Check if user account is suspended
+      if (user.status === 'suspended') {
+        return res.status(403).json({ message: 'Access denied. Account is suspended.' });
+      }
+
+      // Link / populate avatar if not present
+      if (!user.avatar && picture) {
+        user.avatar = picture;
+        await user.save();
+      }
+    } else {
       // Create user if not exists
       // Generate a strong random password that complies with User schema validation constraints
       const randomPassword = 'GoogleAuth_123!_' + Math.random().toString(36).substring(2, 15);
-      
-      // Auto-generate username from email
-      const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+
+      // Auto-generate username from verified email
+      const baseUsername = verifiedEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
       let generatedUsername = baseUsername;
       let usernameExists = await User.findOne({ username: generatedUsername.toLowerCase() });
       while (usernameExists) {
@@ -469,12 +543,17 @@ const googleLogin = async (req, res) => {
         usernameExists = await User.findOne({ username: generatedUsername.toLowerCase() });
       }
 
+      // Strict role sanitization: only allow 'seller' if explicitly requested, otherwise default to 'customer'. Never 'admin'.
+      const sanitizedRole = (role && role.toString().trim().toLowerCase() === 'seller') ? 'seller' : 'customer';
+
       user = await User.create({
-        name,
+        name: name || baseUsername,
         username: generatedUsername.toLowerCase(),
-        email,
+        email: verifiedEmail,
         password: randomPassword,
-        role: role || 'customer',
+        role: sanitizedRole,
+        avatar: picture || '',
+        status: 'approved',
       });
     }
 
@@ -484,11 +563,16 @@ const googleLogin = async (req, res) => {
       username: user.username,
       email: user.email,
       role: user.role,
+      status: user.status,
+      address: user.address || '',
+      avatar: user.avatar || '',
+      language: user.language || 'en',
+      themePreference: user.themePreference || 'light',
       token: generateToken(user._id),
     });
   } catch (error) {
     console.error('googleLogin error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message || 'Internal Server Error during Google Authentication' });
   }
 };
 
