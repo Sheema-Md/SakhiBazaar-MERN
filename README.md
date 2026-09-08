@@ -4,8 +4,6 @@ Sakhi Bazaar is a MERN-based marketplace for women entrepreneurs. It connects cu
 
 The application addresses the need for a focused digital marketplace where women-owned businesses can publish and manage products, communicate with customers, and monitor orders, while customers can discover products and manage the complete purchase lifecycle.
 
-> **Implementation note:** This README describes the functionality currently represented in the repository. Market data is marked as non-live by the API, recommendations use an application scoring function, and there is no separate ML service in the project.
-
 ## Key Features
 
 ### Customer functionality
