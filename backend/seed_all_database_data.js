@@ -15,7 +15,8 @@ const Message = require('./models/Message');
 
 async function seedAllDatabaseData() {
   try {
-    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/sakhibazaar';
+    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+    if (!mongoUri) throw new Error('MONGO_URI must be configured before seeding the database');
     console.log(`Connecting to MongoDB Atlas at: ${mongoUri.replace(/:([^@]+)@/, ':****@')}...`);
     await mongoose.connect(mongoUri);
     console.log('✅ MongoDB connected successfully!\n');

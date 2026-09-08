@@ -56,6 +56,7 @@ const seedDefaultAdmin = async () => {
     }
   } catch (error) {
     console.error('❌ Error in administrator seeding check:', error.message);
+    throw error;
   }
 };
 

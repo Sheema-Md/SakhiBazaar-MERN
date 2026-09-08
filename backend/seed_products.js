@@ -140,7 +140,8 @@ const sampleProducts = [
 
 async function seedProducts() {
   try {
-    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/sakhibazaar';
+    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+    if (!mongoUri) throw new Error('MONGO_URI must be configured before seeding products');
     console.log(`Connecting to MongoDB at: ${mongoUri.replace(/:([^@]+)@/, ':****@')}`);
     await mongoose.connect(mongoUri);
     console.log('MongoDB connected successfully!');
@@ -170,7 +171,7 @@ async function seedProducts() {
 
     const inserted = await Product.insertMany(productsToInsert);
     console.log(`\n🎉 SUCCESS: Successfully seeded ${inserted.length} sample products for Sakhi Bazaar!`);
-    
+
     console.log('\n--- Seeded Products Summary ---');
     inserted.forEach((p, idx) => {
       console.log(`${idx + 1}. [${p.category}] ${p.title} - ₹${p.price}`);
