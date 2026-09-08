@@ -34,6 +34,19 @@ const protect = async (req, res, next) => {
   }
 };
 
+const optionalProtect = async (req, res, next) => {
+  const authorization = req.headers.authorization || '';
+  if (!authorization.startsWith('Bearer')) return next();
+
+  try {
+    const decoded = jwt.verify(authorization.split(' ')[1], process.env.JWT_SECRET);
+    req.user = await User.findById(decoded.id).select('-password');
+  } catch (error) {
+    // Recommendations remain available for anonymous users.
+  }
+  next();
+};
+
 // Middleware to check if user is a seller
 const seller = (req, res, next) => {
   if (req.user && req.user.role === 'seller') {
@@ -75,4 +88,4 @@ const sellerOrAdmin = (req, res, next) => {
   return res.status(403).json({ message: 'Access denied. Seller or Admin role required.' });
 };
 
-module.exports = { protect, seller, admin, sellerOrAdmin };
+module.exports = { protect, optionalProtect, seller, admin, sellerOrAdmin };

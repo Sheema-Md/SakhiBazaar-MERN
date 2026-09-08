@@ -53,6 +53,8 @@ const shipmentRoutes = require('./routes/shipmentRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const marketRoutes = require('./routes/marketRoutes');
+const returnRefundRoutes = require('./routes/returnRefundRoutes');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -93,7 +95,7 @@ app.use('/api/shipments', shipmentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/market', marketRoutes);
-
+app.use('/api/return-refund', returnRefundRoutes);
 // Duplicate mounting without /api prefix for complete client compatibility
 app.use('/auth', authRoutes);
 app.use('/products', productRoutes);

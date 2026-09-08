@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         if (!v) return true;
         return /^\d{10}$/.test(v);
       },
@@ -70,7 +70,7 @@ const userSchema = new mongoose.Schema({
     unique: true,
     sparse: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         if (!v) return true;
         return /^\d{12}$/.test(v);
       },
@@ -80,6 +80,19 @@ const userSchema = new mongoose.Schema({
   address: {
     type: String,
     default: '',
+  },
+  savedAddresses: {
+    type: [{
+      label: { type: String, default: 'Home', trim: true },
+      name: { type: String, required: true, trim: true },
+      address: { type: String, required: true, trim: true },
+      city: { type: String, required: true, trim: true },
+      state: { type: String, required: true, trim: true },
+      zip: { type: String, required: true, trim: true },
+      country: { type: String, default: 'India', trim: true },
+      isDefault: { type: Boolean, default: false },
+    }],
+    default: [],
   },
   avatar: {
     type: String,

@@ -1,5 +1,28 @@
 const MarketPrice = require('../models/MarketPrice');
 const MarketTrend = require('../models/MarketTrend');
+const Product = require('../models/Product');
+
+const forecastSeries = (observations) => {
+  const values = observations.map((item) => Number(item.value)).filter(Number.isFinite);
+  if (values.length < 2) return null;
+
+  const meanX = (values.length - 1) / 2;
+  const meanY = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const denominator = values.reduce((sum, _, index) => sum + ((index - meanX) ** 2), 0) || 1;
+  const slope = values.reduce((sum, value, index) => sum + ((index - meanX) * (value - meanY)), 0) / denominator;
+  const intercept = meanY - (slope * meanX);
+  const predictedPrice = Math.max(0, Math.round(intercept + (slope * values.length)));
+  const changePercent = meanY ? Number(((slope / meanY) * 100).toFixed(2)) : 0;
+
+  return {
+    model: 'linear-regression-v1',
+    horizon: 'next observation window',
+    predictedPrice,
+    slope: Number(slope.toFixed(2)),
+    changePercent,
+    confidence: values.length >= 4 ? 'medium' : 'low',
+  };
+};
 
 // Seed mock Market Prices data
 const seedMarketPrices = async () => {
@@ -168,9 +191,75 @@ const seedMarketTrends = async () => {
 // @access  Public
 const getMarketPrices = async (req, res) => {
   try {
-    await seedMarketPrices();
-    const prices = await MarketPrice.find().sort({ productName: 1 });
-    res.json(prices);
+    const listingStats = await Product.aggregate([
+      { $match: { status: 'active' } },
+      {
+        $group: {
+          _id: '$category',
+          currentPrice: { $avg: '$price' },
+          minPrice: { $min: '$price' },
+          maxPrice: { $max: '$price' },
+          listingCount: { $sum: 1 },
+          dataAsOf: { $max: '$updatedAt' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const monthlyHistory = await Product.aggregate([
+      { $match: { status: 'active' } },
+      {
+        $group: {
+          _id: {
+            category: '$category',
+            month: { $dateToString: { format: '%Y-%m', date: { $ifNull: ['$updatedAt', '$createdAt'] } } },
+          },
+          value: { $avg: '$price' },
+        },
+      },
+      { $sort: { '_id.category': 1, '_id.month': 1 } },
+    ]);
+    const historyByCategory = monthlyHistory.reduce((history, item) => {
+      const category = item._id.category;
+      history[category] = history[category] || [];
+      history[category].push({ observedAt: item._id.month, value: item.value });
+      return history;
+    }, {});
+
+    if (listingStats.length > 0) {
+      return res.json(listingStats.map((item) => {
+        const prediction = forecastSeries(historyByCategory[item._id] || []);
+        const changePercent = prediction?.changePercent || 0;
+        return {
+          productName: `${item._id} marketplace listings`,
+          category: item._id,
+          currentPrice: Math.round(item.currentPrice),
+          referenceRange: { min: Math.round(item.minPrice), max: Math.round(item.maxPrice) },
+          unit: 'per marketplace listing',
+          region: 'India',
+          context: `Current active ${item._id} listings (${item.listingCount} observations)`,
+          source: 'Sakhi Bazaar active listings',
+          dataSource: 'platform-listings',
+          dataAsOf: item.dataAsOf || new Date(),
+          isLive: false,
+          prediction,
+          trend: changePercent > 0.5 ? 'up' : changePercent < -0.5 ? 'down' : 'stable',
+          weeklyChange: Number(changePercent.toFixed(2)),
+          monthlyChange: 0,
+          priceTrend: [],
+        };
+      }));
+    }
+
+    const prices = await MarketPrice.find().sort({ productName: 1 }).lean();
+    res.json(prices.map((price) => ({
+      ...price,
+      dataSource: price.source || 'curated-reference',
+      context: price.context || 'Curated reference benchmark; not a live quote',
+      dataAsOf: price.dataAsOf || price.updatedAt,
+      isLive: false,
+      prediction: forecastSeries(price.observations || []),
+    })));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -181,9 +270,42 @@ const getMarketPrices = async (req, res) => {
 // @access  Public
 const getMarketTrends = async (req, res) => {
   try {
-    await seedMarketTrends();
-    const trends = await MarketTrend.find().sort({ category: 1 });
-    res.json(trends);
+    const categories = await Product.aggregate([
+      { $match: { status: 'active' } },
+      { $group: { _id: '$category', listingCount: { $sum: 1 }, dataAsOf: { $max: '$updatedAt' } } },
+      { $sort: { _id: 1 } },
+    ]);
+
+    if (categories.length > 0) {
+      const trends = await Promise.all(categories.map(async (item) => {
+        const popularProducts = await Product.find({ category: item._id, status: 'active' })
+          .sort({ ratings: -1, createdAt: -1 }).limit(5).select('title').lean();
+        return {
+          category: item._id,
+          demandTrend: 'Stable',
+          supplyTrend: 'Stable',
+          popularProducts: popularProducts.map((product) => product.title),
+          priceIncreaseItems: [],
+          priceDecreaseItems: [],
+          listingCount: item.listingCount,
+          region: 'India',
+          source: 'Sakhi Bazaar active listings',
+          dataSource: 'platform-listings',
+          dataAsOf: item.dataAsOf || new Date(),
+          window: 'current snapshot; historical series not yet available',
+        };
+      }));
+      return res.json(trends);
+    }
+
+    const trends = await MarketTrend.find().sort({ category: 1 }).lean();
+    res.json(trends.map((trend) => ({
+      ...trend,
+      source: trend.source || 'curated-reference',
+      dataSource: trend.source || 'curated-reference',
+      dataAsOf: trend.dataAsOf || trend.updatedAt,
+      window: trend.window || 'reference snapshot; historical series not yet available',
+    })));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

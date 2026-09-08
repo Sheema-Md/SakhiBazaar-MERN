@@ -57,6 +57,8 @@ const SellerDashboard = () => {
     });
   };
 
+  const translateStatus = (status) => t(`orderStatus${String(status || '').replace(/\s+/g, '')}`, status);
+
   // Dynamic Content Tab Selector
   const currentView = searchParams.get('view') || 'dashboard';
   const editingProductId = searchParams.get('id') || '';
@@ -447,10 +449,10 @@ const SellerDashboard = () => {
         { password: passwordData.newPassword },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
-      setPasswordSuccess('Password updated successfully!');
+      setPasswordSuccess(t('passwordUpdatedSeller'));
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err) {
-      setPasswordError(err.response?.data?.message || 'Failed to update password.');
+      setPasswordError(err.response?.data?.message || t('passwordUpdateFailed'));
     } finally {
       setLoading(false);
     }
@@ -573,7 +575,7 @@ const SellerDashboard = () => {
     setFormSuccess('');
 
     if (!addTitle || !addCategory || !addPrice || !addDesc || addImages.length === 0) {
-      setFormError('Please fill in all required fields and upload at least one image.');
+      setFormError(t('productRequired'));
       return;
     }
 
@@ -603,7 +605,7 @@ const SellerDashboard = () => {
           Authorization: `Bearer ${user.token}`,
         },
       });
-      setFormSuccess('Product listed successfully!');
+      setFormSuccess(t('productListed'));
       setAddTitle('');
       setAddCategory('');
       setAddSubcategory('');
@@ -620,7 +622,7 @@ const SellerDashboard = () => {
       setAddDeliveryLocations([]);
       setTimeout(() => setSearchParams({ view: 'products' }), 1000);
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to list product.');
+      setFormError(err.response?.data?.message || t('productListFailed'));
     } finally {
       setLoading(false);
     }
@@ -632,7 +634,7 @@ const SellerDashboard = () => {
     setFormSuccess('');
 
     if (!editTitle || !editCategory || !editPrice || !editDesc) {
-      setFormError('Please fill in all required fields.');
+      setFormError(t('productRequired'));
       return;
     }
 
@@ -651,7 +653,7 @@ const SellerDashboard = () => {
     formData.append('tags', JSON.stringify(editTags));
 
     if (editMediaItems.length === 0) {
-      setFormError('Please provide at least one product image.');
+      setFormError(t('imageRequired'));
       return;
     }
 
@@ -675,10 +677,10 @@ const SellerDashboard = () => {
           Authorization: `Bearer ${user.token}`,
         },
       });
-      setFormSuccess('Product details updated successfully!');
+      setFormSuccess(t('productUpdated'));
       setTimeout(() => setSearchParams({ view: 'products' }), 1000);
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to update product details.');
+      setFormError(err.response?.data?.message || t('productUpdateFailed'));
     } finally {
       setLoading(false);
     }
@@ -1509,7 +1511,7 @@ const SellerDashboard = () => {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 gap-4 border-t border-rose-50 dark:border-slate-750">
                     <div className="text-xs">
                       <span className="text-slate-450 dark:text-slate-400 font-bold">Shipment Status: </span>
-                      <span className="font-bold capitalize text-rose-600 dark:text-rose-400">{o.orderStatus}</span>
+                      <span className="font-bold capitalize text-rose-600 dark:text-rose-400">{translateStatus(o.orderStatus)}</span>
                     </div>
 
                     {/* Fulfill Status selector */}

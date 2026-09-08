@@ -25,6 +25,7 @@ const Chat = () => {
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [showMobilePane, setShowMobilePane] = useState('list'); // 'list' or 'chat'
+  const [chatError, setChatError] = useState('');
 
   const messagesEndRef = useRef(null);
 
@@ -41,25 +42,40 @@ const Chat = () => {
   const fetchConversations = async (selectConv = null) => {
     try {
       setLoadingConversations(true);
+      setChatError('');
+      let conversationToSelect = selectConv;
+
+      if (typeof selectConv?._id === 'string' && selectConv._id.startsWith('conv_')) {
+        const recipient = selectConv.participants.find((participant) => participant._id !== user._id);
+        if (!recipient?._id) throw new Error('The selected chat recipient is unavailable.');
+
+        const createdConversation = await api.post('/chat/conversations', {
+          recipientId: recipient._id,
+          productId: selectConv.productId?._id || selectConv.productId || null,
+        });
+        conversationToSelect = createdConversation.data;
+      }
+
       const response = await api.get('/chat/conversations');
       setConversations(response.data);
 
       // Handle selecting a conversation initially
-      if (selectConv) {
+      if (conversationToSelect) {
         // Check if selectConv is already in the list
-        const exists = response.data.find((c) => c._id === selectConv._id);
+        const exists = response.data.find((c) => c._id === conversationToSelect._id);
         if (exists) {
           setActiveConversation(exists);
           setShowMobilePane('chat');
         } else {
           // Prepend new conversation to lists
-          setConversations((prev) => [selectConv, ...prev]);
-          setActiveConversation(selectConv);
+          setConversations((prev) => [conversationToSelect, ...prev]);
+          setActiveConversation(conversationToSelect);
           setShowMobilePane('chat');
         }
       }
     } catch (err) {
       console.error('Error loading conversations:', err);
+      setChatError(err.response?.data?.message || err.message || 'Unable to load chat.');
     } finally {
       setLoadingConversations(false);
     }
@@ -210,15 +226,14 @@ const Chat = () => {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/50 flex">
       <div className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex">
-        
+
         {/* Main Chat Layout Container */}
         <div className="w-full bg-white border border-slate-100 rounded-3xl shadow-xl shadow-slate-100/50 overflow-hidden flex h-[78vh]">
-          
+
           {/* LEFT PANEL: CONVERSATIONS LIST */}
           <div
-            className={`w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col ${
-              showMobilePane === 'chat' ? 'hidden md:flex' : 'flex'
-            }`}
+            className={`w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col ${showMobilePane === 'chat' ? 'hidden md:flex' : 'flex'
+              }`}
           >
             {/* Header */}
             <div className="p-4 border-b border-slate-100 bg-slate-50/40 flex justify-between items-center">
@@ -231,7 +246,7 @@ const Chat = () => {
                   Chat with buyers and sellers
                 </p>
               </div>
-              
+
               {/* Online connection indicator */}
               <div className="flex items-center gap-1">
                 <Circle
@@ -243,6 +258,11 @@ const Chat = () => {
                 </span>
               </div>
             </div>
+            {chatError && (
+              <div className="px-4 py-2 text-xs font-semibold text-red-600 bg-red-50 border-b border-red-100">
+                {chatError}
+              </div>
+            )}
 
             {/* Conversation Items */}
             <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
@@ -266,11 +286,10 @@ const Chat = () => {
                         setActiveConversation(conv);
                         setShowMobilePane('chat');
                       }}
-                      className={`p-4 flex items-start space-x-3 cursor-pointer transition-all duration-150 ${
-                        isActive
+                      className={`p-4 flex items-start space-x-3 cursor-pointer transition-all duration-150 ${isActive
                           ? 'bg-rose-50/50 border-l-4 border-rose-500'
                           : 'hover:bg-slate-50 border-l-4 border-transparent'
-                      }`}
+                        }`}
                     >
                       {/* Avatar */}
                       <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
@@ -287,7 +306,7 @@ const Chat = () => {
                             {partner.role === 'seller' ? 'Entrepreneur' : 'Buyer'}
                           </span>
                         </div>
-                        
+
                         {/* Conversation Subtitle (Product Reference if available) */}
                         {conv.productId && (
                           <div className="flex items-center gap-1 text-[10px] font-semibold text-rose-600 mt-0.5">
@@ -297,9 +316,8 @@ const Chat = () => {
                         )}
 
                         <p
-                          className={`text-xs mt-1 truncate ${
-                            isUnread ? 'text-slate-900 font-bold' : 'text-slate-400 font-medium'
-                          }`}
+                          className={`text-xs mt-1 truncate ${isUnread ? 'text-slate-900 font-bold' : 'text-slate-400 font-medium'
+                            }`}
                         >
                           {conv.lastMessage?.text || 'Start chatting...'}
                         </p>
@@ -328,9 +346,8 @@ const Chat = () => {
 
           {/* RIGHT PANEL: MESSAGE INTERFACE */}
           <div
-            className={`flex-1 flex flex-col bg-slate-50/20 ${
-              showMobilePane === 'list' ? 'hidden md:flex' : 'flex'
-            }`}
+            className={`flex-1 flex flex-col bg-slate-50/20 ${showMobilePane === 'list' ? 'hidden md:flex' : 'flex'
+              }`}
           >
             {activeConversation ? (
               <>
@@ -401,17 +418,15 @@ const Chat = () => {
                           className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
-                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm leading-relaxed ${
-                              isMe
+                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm leading-relaxed ${isMe
                                 ? 'bg-rose-600 text-white rounded-br-none'
                                 : 'bg-white text-slate-700 border border-slate-100 rounded-bl-none'
-                            }`}
+                              }`}
                           >
                             <p className="whitespace-pre-wrap">{msg.text}</p>
                             <span
-                              className={`text-[9px] block text-right mt-1 font-medium ${
-                                isMe ? 'text-rose-100' : 'text-slate-400'
-                              }`}
+                              className={`text-[9px] block text-right mt-1 font-medium ${isMe ? 'text-rose-100' : 'text-slate-400'
+                                }`}
                             >
                               {new Date(msg.createdAt).toLocaleTimeString([], {
                                 hour: '2-digit',

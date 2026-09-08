@@ -3,6 +3,7 @@ import { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import api from '../services/api';
 
 import {
@@ -21,16 +22,12 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import StripePaymentForm from '../components/StripePaymentForm';
 
-const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ||
-  'pk_test_51ToKSBFzmY01c2n8SpmlyqjM5IEa2GzNYumaSCaGqWOlJYfpVHF1q5UFygBtpcurLcgoaeiBxxqJOBcE1QMY67aa00kYQnVA3Z'
-);
-
 const Checkout = () => {
   const { cartItems, getCartTotal, getCartCount, clearCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useContext(AuthContext);
+  const { t } = useLanguage();
 
   const directBuyItem = location.state?.directBuyItem;
 
@@ -66,6 +63,9 @@ const Checkout = () => {
     zip: user?.zip || '',
     country: user?.country || 'India',
   });
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('new');
+  const [saveNewAddress, setSaveNewAddress] = useState(false);
 
   const [validationErrors, setValidationErrors] = useState({});
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -80,6 +80,8 @@ const Checkout = () => {
 
   const [paymentError, setPaymentError] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('stripe');
+  const [stripePromise, setStripePromise] = useState(null);
+  const [stripeConfigError, setStripeConfigError] = useState('');
 
   /*
    * ------------------------------------------------------------
@@ -90,19 +92,32 @@ const Checkout = () => {
    * It does NOT synchronously set state on every render.
    */
   useEffect(() => {
-    if (!user) return;
+    let active = true;
+    api.get('/auth/addresses').then(({ data }) => {
+      if (!active || !Array.isArray(data)) return;
+      setSavedAddresses(data);
+      const defaultAddress = data.find((address) => address.isDefault) || data[0];
+      if (defaultAddress) {
+        setSelectedAddressId(defaultAddress._id);
+        setFormData((prev) => ({ ...prev, ...defaultAddress }));
+      }
+    }).catch(() => { });
+    return () => { active = false; };
+  }, []);
 
-    setFormData((prev) => ({
-      ...prev,
-      name: prev.name || user.name || '',
-      email: prev.email || user.email || '',
-      address: prev.address || user.address || '',
-      city: prev.city || user.city || '',
-      state: prev.state || user.state || '',
-      zip: prev.zip || user.zip || '',
-      country: prev.country || user.country || 'India',
-    }));
-  }, [user]);
+  useEffect(() => {
+    let active = true;
+    api.get('/payments/config').then(({ data }) => {
+      const publishableKey = data?.publishableKey;
+      if (active && publishableKey) {
+        setStripePromise(loadStripe(publishableKey));
+        setStripeConfigError('');
+      }
+    }).catch((error) => {
+      if (active) setStripeConfigError(error.response?.data?.message || 'Stripe payment configuration is unavailable.');
+    });
+    return () => { active = false; };
+  }, []);
 
   const total = directBuyItem
     ? Number(directBuyItem.product.price || 0) *
@@ -152,15 +167,17 @@ const Checkout = () => {
    * ------------------------------------------------------------
    */
   const handleUseSavedAddress = () => {
-    if (!user?.address) return;
+    const selected = savedAddresses.find((address) => address._id === selectedAddressId);
+    if (!selected) return;
 
     setFormData((prev) => ({
       ...prev,
-      address: user.address,
-      city: user.city || prev.city || '',
-      state: user.state || prev.state || '',
-      zip: user.zip || prev.zip || '',
-      country: user.country || prev.country || 'India',
+      name: selected.name,
+      address: selected.address,
+      city: selected.city,
+      state: selected.state,
+      zip: selected.zip,
+      country: selected.country || 'India',
     }));
 
     setValidationErrors((prev) => ({
@@ -173,6 +190,17 @@ const Checkout = () => {
     }));
 
     setPaymentError(null);
+  };
+
+  const handleSaveAddress = async () => {
+    if (!saveNewAddress || selectedAddressId !== 'new') return;
+    try {
+      const { data } = await api.post('/auth/addresses', { ...formData, label: 'Checkout address' });
+      setSavedAddresses((prev) => [...prev, data]);
+      setSelectedAddressId(data._id);
+    } catch (error) {
+      console.error('Could not save delivery address:', error);
+    }
   };
 
   /*
@@ -192,43 +220,43 @@ const Checkout = () => {
     const country = String(formData.country || '').trim();
 
     if (!name) {
-      errors.name = 'Full name is required.';
+      errors.name = t('fullNameRequired');
     } else if (name.length < 2) {
-      errors.name = 'Please enter a valid name.';
+      errors.name = t('validName');
     }
 
     if (!email) {
-      errors.email = 'Email address is required.';
+      errors.email = t('emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = 'Please enter a valid email address.';
+      errors.email = t('validEmail');
     }
 
     if (!address) {
-      errors.address = 'Street address is required.';
+      errors.address = t('addressRequired');
     } else if (address.length < 5) {
-      errors.address = 'Please enter a complete street address.';
+      errors.address = t('completeAddress');
     }
 
     if (!city) {
-      errors.city = 'City is required.';
+      errors.city = t('cityRequired');
     } else if (city.length < 2) {
-      errors.city = 'Please enter a valid city.';
+      errors.city = t('validCity');
     }
 
     if (!state) {
-      errors.state = 'State is required.';
+      errors.state = t('stateRequired');
     } else if (state.length < 2) {
-      errors.state = 'Please enter a valid state.';
+      errors.state = t('validState');
     }
 
     if (!zip) {
-      errors.zip = 'PIN/ZIP code is required.';
+      errors.zip = t('zipRequired');
     } else if (!/^\d{6}$/.test(zip)) {
-      errors.zip = 'Enter a valid 6-digit PIN code.';
+      errors.zip = t('validZip');
     }
 
     if (!country) {
-      errors.country = 'Country is required.';
+      errors.country = t('countryRequired');
     }
 
     setValidationErrors(errors);
@@ -245,13 +273,13 @@ const Checkout = () => {
     e.preventDefault();
 
     if (checkoutItems.length === 0) {
-      setPaymentError('Your cart is empty.');
+      setPaymentError(t('checkoutEmpty'));
       return;
     }
 
     if (!validateShippingDetails()) {
       setPaymentError(
-        'Please correct the highlighted shipping details before continuing.'
+        t('shippingCorrection')
       );
       return;
     }
@@ -296,6 +324,7 @@ const Checkout = () => {
       });
 
       const orderData = res.data;
+      await handleSaveAddress();
 
       setCreatedOrderId(orderData._id);
       setServerTotalAmount(orderData.totalAmount);
@@ -306,6 +335,10 @@ const Checkout = () => {
        * --------------------------------------------------------
        */
       if (paymentMethod === 'cod') {
+        await api.post('/payments', {
+          orderId: orderData._id,
+          paymentMethod: 'Cash on Delivery',
+        });
         if (!directBuyItem) {
           await clearCart();
         }
@@ -414,9 +447,9 @@ const Checkout = () => {
    * STRIPE PAYMENT FAILURE
    * ------------------------------------------------------------
    */
-  const handlePaymentError = (errorMsg) => {
+  const handlePaymentError = (errorMsg, state = 'failed') => {
     setPaymentError(
-      errorMsg || 'Payment could not be completed.'
+      state === 'cancelled' ? 'Payment was cancelled. Your order is still available to retry.' : errorMsg || 'Payment could not be completed.'
     );
   };
 
@@ -433,7 +466,7 @@ const Checkout = () => {
         </div>
 
         <h2 className="text-xl font-bold text-gray-900">
-          Your cart is empty
+          {t('checkoutEmpty')}
         </h2>
 
         <p className="text-gray-500 mt-2">
@@ -488,27 +521,15 @@ const Checkout = () => {
             </div>
 
             {/* SAVED ADDRESS */}
-            {user?.address && (
-              <button
-                type="button"
-                onClick={handleUseSavedAddress}
-                disabled={!!stripeClientSecret}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-rose-100 bg-rose-50/50 hover:bg-rose-50 transition-colors text-left disabled:opacity-60"
-              >
-                <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-rose-600 shrink-0">
-                  <MapPin size={18} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-black text-gray-900">
-                    Use Saved Address
-                  </p>
-
-                  <p className="text-xs text-gray-500 truncate mt-0.5">
-                    {user.address}
-                  </p>
-                </div>
-              </button>
+            {savedAddresses.length > 0 && (
+              <div className="p-4 rounded-2xl border border-rose-100 bg-rose-50/50 space-y-3">
+                <label htmlFor="saved-address" className="flex items-center gap-2 text-xs font-black text-gray-900"><MapPin size={16} className="text-rose-600" /> Saved delivery addresses</label>
+                <select id="saved-address" value={selectedAddressId} disabled={!!stripeClientSecret} onChange={(event) => { setSelectedAddressId(event.target.value); if (event.target.value !== 'new') { const selected = savedAddresses.find((item) => item._id === event.target.value); if (selected) setFormData((prev) => ({ ...prev, ...selected })); } }} className="w-full px-3 py-2.5 bg-white border border-rose-100 rounded-xl text-sm">
+                  {savedAddresses.map((saved) => <option key={saved._id} value={saved._id}>{saved.label} · {saved.address}, {saved.city}</option>)}
+                  <option value="new">Enter a new address</option>
+                </select>
+                <button type="button" onClick={handleUseSavedAddress} disabled={!!stripeClientSecret || selectedAddressId === 'new'} className="text-xs font-bold text-rose-700 disabled:opacity-50">Use selected address</button>
+              </div>
             )}
 
             <div className="space-y-4">
@@ -607,6 +628,11 @@ const Checkout = () => {
                   </p>
                 )}
               </div>
+
+              <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                <input type="checkbox" checked={saveNewAddress} disabled={!!stripeClientSecret || selectedAddressId !== 'new'} onChange={(event) => setSaveNewAddress(event.target.checked)} />
+                Save this address for future checkout
+              </label>
 
               {/* CITY / STATE / ZIP */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -914,26 +940,19 @@ const Checkout = () => {
                     Secure Card Details
                   </h4>
 
-                  <Elements
-                    stripe={stripePromise}
-                    options={{
-                      clientSecret: stripeClientSecret,
-                    }}
-                  >
-                    <StripePaymentForm
-                      clientSecret={stripeClientSecret}
-                      orderId={createdOrderId}
-                      totalAmount={
-                        serverTotalAmount || grandTotal
-                      }
-                      onPaymentSuccess={
-                        handlePaymentSuccess
-                      }
-                      onPaymentError={
-                        handlePaymentError
-                      }
-                    />
-                  </Elements>
+                  {stripePromise ? (
+                    <Elements stripe={stripePromise} options={{ clientSecret: stripeClientSecret }}>
+                      <StripePaymentForm
+                        clientSecret={stripeClientSecret}
+                        orderId={createdOrderId}
+                        totalAmount={serverTotalAmount || grandTotal}
+                        onPaymentSuccess={handlePaymentSuccess}
+                        onPaymentError={handlePaymentError}
+                      />
+                    </Elements>
+                  ) : (
+                    <p className="text-xs font-semibold text-red-600">{stripeConfigError || 'Stripe payment configuration is loading...'}</p>
+                  )}
 
                   {paymentError && (
                     <p className="text-xs font-semibold text-red-500 text-center">

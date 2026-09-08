@@ -229,10 +229,10 @@ const trackOrder = async (req, res) => {
     // Role verification: check if customer, seller of product, or admin
     const isAdmin = req.user.role === 'admin';
     const isCustomer = order.customer._id.toString() === req.user._id.toString();
-    
+
     let isSeller = false;
     if (req.user.role === 'seller') {
-      isSeller = order.products.some(item => 
+      isSeller = order.products.some(item =>
         item.product && item.product.seller.toString() === req.user._id.toString()
       );
     }
@@ -254,7 +254,7 @@ const updateOrderStatus = async (req, res) => {
   try {
     const { status, description } = req.body;
     const validStatuses = ['Pending', 'Confirmed', 'Processing', 'Packed', 'Shipped', 'Out For Delivery', 'Delivered', 'Cancelled'];
-    
+
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
     }
@@ -290,16 +290,16 @@ const updateOrderStatus = async (req, res) => {
 
     order.orderStatus = matchedStatus;
     order.shipmentStatus = matchedStatus;
-    
+
     const eventDescription = description || `Order status updated to ${matchedStatus}`;
-    
+
     // Add timeline checkpoint
     order.timeline.push({
       status: matchedStatus,
       description: eventDescription,
       timestamp: new Date()
     });
-    
+
     await order.save();
 
     // Update Shipment document
@@ -331,6 +331,7 @@ const updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 module.exports = {
   createOrder,

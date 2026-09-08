@@ -16,6 +16,9 @@ const {
   deleteUser,
   logoutUser,
   deleteUserProfile,
+  getSavedAddresses,
+  saveAddress,
+  deleteSavedAddress,
 } = require('../controllers/authController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -39,5 +42,8 @@ console.log('DEBUG /users route: protect =', typeof protect, 'admin =', typeof a
 router.get('/users', protect, admin, getAllUsers);
 router.put('/users/:id', protect, admin, updateUserByAdmin);
 router.delete('/users/:id', protect, admin, deleteUser);
+router.get('/addresses', protect, getSavedAddresses);
+router.post('/addresses', protect, saveAddress);
+router.delete('/addresses/:id', protect, deleteSavedAddress);
 
 module.exports = router;

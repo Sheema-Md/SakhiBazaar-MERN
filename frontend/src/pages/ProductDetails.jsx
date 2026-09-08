@@ -6,7 +6,6 @@ import { useCart } from '../context/CartContext.jsx';
 import { useWishlist } from '../context/WishlistContext';
 import { useLanguage } from '../context/LanguageContext';
 import ProductCard from '../components/ProductCard';
-import SeasonalPricingGuide from '../components/SeasonalPricingGuide';
 import { INDIA_STATES, getIndiaDistricts, getIndiaCities } from '../utils/indiaLocations';
 import {
   ArrowLeft, Sparkles, User, Tag, Mail, ShoppingCart, Heart, Globe, Star, MapPin, ChevronLeft, ChevronRight
@@ -29,6 +28,8 @@ const ProductDetails = () => {
 
   // Related products state
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [recommendationGroups, setRecommendationGroups] = useState({});
+  const [marketGuideline, setMarketGuideline] = useState(null);
 
   // Delivery check states
   const [chkState, setChkState] = useState('');
@@ -96,15 +97,23 @@ const ProductDetails = () => {
       setProduct(response.data);
       setActiveImageIdx(0);
 
-      // Fetch related products
+      // Deterministic recommendations are kept separate from future ML ranking.
       try {
-        const resRelated = await api.get(`/products/filter?category=${encodeURIComponent(response.data.category)}`);
-        setRelatedProducts((resRelated.data || []).filter(p => p._id !== id).slice(0, 4));
+        const resRelated = await api.get(`/products/${id}/recommendations`);
+        setRelatedProducts((resRelated.data?.similar || []).slice(0, 4));
+        setRecommendationGroups(resRelated.data || {});
       } catch (err) {
         console.error('Failed to fetch related products:', err);
       }
+      try {
+        const marketResponse = await api.get('/market/market-prices');
+        const category = String(response.data.category || '').toLowerCase();
+        setMarketGuideline((marketResponse.data || []).find((item) => String(item.category || '').toLowerCase() === category) || null);
+      } catch (err) {
+        console.error('Failed to fetch market guideline:', err);
+      }
     } catch (err) {
-      setError('Failed to retrieve product details.');
+      setError(t('failedProductDetails'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -228,14 +237,14 @@ const ProductDetails = () => {
   if (error || !product) {
     return (
       <div className="max-w-md mx-auto my-12 text-center p-8 bg-white dark:bg-slate-800 border border-rose-100 rounded-2xl shadow-sm text-slate-800 dark:text-slate-100">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Product not found</h2>
-        <p className="text-gray-500 dark:text-slate-450 mt-2">{error || 'The product you are looking for does not exist.'}</p>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('productNotFound')}</h2>
+        <p className="text-gray-500 dark:text-slate-450 mt-2">{error || t('productMissing')}</p>
         <button
           onClick={() => navigate(-1)}
           className="mt-6 inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 text-white rounded-xl text-sm font-semibold hover:bg-rose-700 transition-colors"
         >
           <ArrowLeft size={16} />
-          Go Back
+          {t('goBack')}
         </button>
       </div>
     );
@@ -334,7 +343,7 @@ const ProductDetails = () => {
                     <button
                       onClick={() => toggleWishlist(product)}
                       className="p-2.5 rounded-xl border border-gray-150 dark:border-slate-700 shadow-sm hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
-                      title="Save to Wishlist"
+                      title={t('saveToWishlist')}
                     >
                       <Heart
                         size={18}
@@ -391,14 +400,14 @@ const ProductDetails = () => {
                     <>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                          Choose Size
+                          {t('chooseSize')}
                         </label>
                         <select
                           value={selectedSize}
                           onChange={(e) => setSelectedSize(e.target.value)}
                           className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none text-slate-850 dark:text-slate-105 cursor-pointer"
                         >
-                          <option value="">Select</option>
+                          <option value="">{t('select')}</option>
                           {isClothing ? (
                             <>
                               <option value="S">Small (S)</option>
@@ -420,14 +429,14 @@ const ProductDetails = () => {
 
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                          Choose Color
+                          {t('chooseColor')}
                         </label>
                         <select
                           value={selectedColor}
                           onChange={(e) => setSelectedColor(e.target.value)}
                           className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none text-slate-850 dark:text-slate-105 cursor-pointer"
                         >
-                          <option value="">Select</option>
+                          <option value="">{t('select')}</option>
                           <option value="Red">Red</option>
                           <option value="Blue">Blue</option>
                           <option value="Black">Black</option>
@@ -441,14 +450,14 @@ const ProductDetails = () => {
                   {isFoodOrAgri && (
                     <div className="col-span-2">
                       <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                        Choose Weight / Quantity
+                        {t('chooseWeight')}
                       </label>
                       <select
                         value={selectedWeight}
                         onChange={(e) => setSelectedWeight(e.target.value)}
                         className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none text-slate-850 dark:text-slate-105 cursor-pointer"
                       >
-                        <option value="">Select</option>
+                        <option value="">{t('select')}</option>
                         <option value="250g">250g</option>
                         <option value="500g">500g</option>
                         <option value="1kg">1kg</option>
@@ -463,7 +472,7 @@ const ProductDetails = () => {
               {/* Delivery check widget */}
               <div className="p-4 bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-750 rounded-2xl space-y-3">
                 <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <MapPin size={13} className="text-rose-500" /> Check Delivery Locations
+                  <MapPin size={13} className="text-rose-500" /> {t('checkDeliveryLocations')}
                 </h4>
 
                 <form onSubmit={handleCheckDelivery} className="space-y-2">
@@ -478,7 +487,7 @@ const ProductDetails = () => {
                       }}
                       className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl focus:outline-none text-slate-850 dark:text-slate-105 cursor-pointer"
                     >
-                      <option value="">Select State</option>
+                      <option value="">{t('selectState')}</option>
                       {INDIA_STATES.map((st) => (
                         <option key={st} value={st}>{st}</option>
                       ))}
@@ -492,7 +501,7 @@ const ProductDetails = () => {
                       }}
                       className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl focus:outline-none text-slate-850 dark:text-slate-105 cursor-pointer disabled:opacity-50"
                     >
-                      <option value="">Select District</option>
+                      <option value="">{t('selectDistrict')}</option>
                       {chkState && getIndiaDistricts(chkState).map((dt) => (
                         <option key={dt} value={dt}>{dt}</option>
                       ))}
@@ -503,20 +512,20 @@ const ProductDetails = () => {
                       onChange={(e) => setChkCity(e.target.value)}
                       className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-xl focus:outline-none text-slate-850 dark:text-slate-105 cursor-pointer disabled:opacity-50"
                     >
-                      <option value="">Select City/Town</option>
+                      <option value="">{t('selectCity')}</option>
                       {chkState && chkDistrict && getIndiaCities(chkState, chkDistrict).map((ct) => (
                         <option key={ct} value={ct}>{ct}</option>
                       ))}
                     </select>
                   </div>
                   <button type="submit" className="w-full py-2 bg-slate-850 dark:bg-slate-700 hover:bg-slate-950 text-white text-xs font-bold rounded-xl cursor-pointer transition-colors">
-                    Verify Delivery Options
+                    {t('verifyDelivery')}
                   </button>
                 </form>
 
                 {deliveryAvailable !== null && (
                   <p className={`text-[10px] font-bold ${deliveryAvailable ? 'text-green-600' : 'text-red-500'}`}>
-                    {deliveryAvailable ? '✓ Delivery is available to your location!' : '✗ Sorry, delivery is not available to this location.'}
+                    {deliveryAvailable ? `✓ ${t('deliveryAvailable')}` : `✗ ${t('deliveryUnavailable')}`}
                   </p>
                 )}
               </div>
@@ -538,52 +547,21 @@ const ProductDetails = () => {
                   {product.description}
                 </p>
 
-                {/* Market Price Awareness Widget - Only for Sellers */}
-                {user && user.role === 'seller' && (
-                  (() => {
-                    const getMarketAverage = () => {
-                      const categoryMap = {
-                        'clothing': 1800,
-                        'handmade crafts': 1200,
-                        'food': 400,
-                        'art': 3000,
-                      };
-                      const normalized = (product.category || '').toLowerCase();
-                      return categoryMap[normalized] || Math.round(product.price * 0.95);
-                    };
-                    const marketAvg = getMarketAverage();
-                    const priceDiff = product.price - marketAvg;
-                    const percentageDiff = Math.min(Math.max(Math.round((priceDiff / marketAvg) * 100), -50), 50);
-
-                    return (
-                      <div className="p-4 bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-750 rounded-2xl space-y-2 mt-4">
-                        <h4 className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <Globe size={12} className="text-rose-500" />
-                          {t('marketPriceGuideline')}
-                        </h4>
-                        <div className="flex justify-between text-[10px] font-bold text-slate-550 mt-2">
-                          <span>₹{Math.round(marketAvg * 0.7)} (Low)</span>
-                          <span className="text-rose-600">₹{marketAvg} ({t('marketPrices')} Avg)</span>
-                          <span>₹{Math.round(marketAvg * 1.3)} (Premium)</span>
-                        </div>
-
-                        <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full relative overflow-visible mt-1.5">
-                          <div
-                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-rose-600 border-2 border-white rounded-full shadow-md transition-all duration-300"
-                            style={{ left: `${percentageDiff + 50}%` }}
-                            title={`Your Price is ${percentageDiff >= 0 ? '+' : ''}${percentageDiff}% of Market Avg`}
-                          />
-                        </div>
-                        <p className="text-[10px] font-semibold text-slate-400 mt-1 leading-relaxed text-center">
-                          {percentageDiff < 0
-                            ? `This item is listed ${Math.abs(percentageDiff)}% below standard platform benchmarks (Great Deal!)`
-                            : percentageDiff === 0
-                              ? `This item matches standard platform benchmarks.`
-                              : `This item is listed ${percentageDiff}% above category benchmarks (Premium Quality).`}
-                        </p>
-                      </div>
-                    );
-                  })()
+                {/* Current market guideline - seller context only */}
+                {user && user.role === 'seller' && marketGuideline && (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-750 rounded-2xl space-y-2 mt-4">
+                    <h4 className="text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Globe size={12} className="text-rose-500" /> {t('marketPriceGuideline')}
+                    </h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">{marketGuideline.context}</p>
+                    <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-550 dark:text-slate-300">
+                      <span>{t('marketPrices')}: ₹{Number(marketGuideline.currentPrice || 0).toLocaleString('en-IN')}</span>
+                      <span>{t('marketRange')}: ₹{Number(marketGuideline.referenceRange?.min || 0).toLocaleString('en-IN')} - ₹{Number(marketGuideline.referenceRange?.max || 0).toLocaleString('en-IN')}</span>
+                      <span>{t('marketRegion')}: {marketGuideline.region}</span>
+                      <span>{t('marketDataAsOf')}: {new Date(marketGuideline.dataAsOf).toLocaleString()}</span>
+                    </div>
+                    <p className="text-[10px] font-semibold text-slate-400">{t('marketSource')}: {marketGuideline.source}. {t('marketDataDisclaimer')}</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -622,9 +600,6 @@ const ProductDetails = () => {
               </div>
             </div>
 
-            {/* Seasonal Market Pricing Calculator Widget */}
-            <SeasonalPricingGuide basePrice={product.price} category={product.category} />
-
             {/* Add to Cart & Buy Now action buttons */}
             {(!user || user._id !== product.seller?._id) && (
               <div className="flex flex-col sm:flex-row gap-3">
@@ -636,13 +611,13 @@ const ProductDetails = () => {
                     }`}
                 >
                   <ShoppingCart size={16} />
-                  {addedAlert ? 'Added to Cart ✓' : 'Add to Cart'}
+                  {addedAlert ? t('addedToCartShort') : t('addToCart')}
                 </button>
                 <button
                   onClick={handleBuyNow}
                   className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
                 >
-                  Buy Now
+                  {t('buyNow')}
                 </button>
               </div>
             )}
@@ -810,7 +785,7 @@ const ProductDetails = () => {
             <div className="mt-12 space-y-6">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
                 <Sparkles className="text-rose-500" size={20} />
-                Related Products You May Like
+                {t('relatedProducts')}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                 {relatedProducts.map((relProduct) => (
@@ -819,6 +794,24 @@ const ProductDetails = () => {
               </div>
             </div>
           )}
+
+          {['frequentlyBoughtTogether', 'popular', 'purchaseHistory'].map((groupKey) => {
+            const products = (recommendationGroups[groupKey] || []).slice(0, 4);
+            if (products.length === 0) return null;
+            const title = groupKey === 'frequentlyBoughtTogether'
+              ? 'Frequently Bought Together'
+              : groupKey === 'popular' ? 'Popular Products' : 'Based on Your Purchases';
+            return (
+              <div key={groupKey} className="mt-10 space-y-4">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">{title}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                  {products.map((recommendedProduct) => (
+                    <ProductCard key={recommendedProduct._id} product={recommendedProduct} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
       </div>

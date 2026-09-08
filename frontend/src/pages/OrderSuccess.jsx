@@ -376,9 +376,9 @@ const OrderSuccess = () => {
               <span>
                 Payment:{' '}
                 <strong className="text-gray-800 capitalize">
-                  {paymentMethod === 'cod'
+                  {paymentMethod === 'cod' || paymentMethod === 'Cash on Delivery'
                     ? 'Cash on Delivery'
-                    : 'Stripe Card'}
+                    : paymentMethod === 'Stripe Payment' ? 'Stripe payment' : paymentMethod}
                 </strong>
               </span>
 
@@ -526,9 +526,9 @@ const OrderSuccess = () => {
 
             <p className="text-sm">
               <strong>Payment:</strong>{' '}
-              {paymentMethod === 'cod'
+              {paymentMethod === 'cod' || paymentMethod === 'Cash on Delivery'
                 ? 'Cash on Delivery'
-                : 'Stripe Card'}
+                : paymentMethod === 'Stripe Payment' ? 'Stripe payment' : paymentMethod}
             </p>
 
             <p className="text-sm mt-1">

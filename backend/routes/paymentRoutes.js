@@ -6,6 +6,7 @@ const {
   refundPayment,
   createPaymentIntent,
   confirmStripePayment,
+  getStripeConfig,
 } = require('../controllers/paymentController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -16,6 +17,7 @@ router.get('/', getPayments);
 router.post('/refund', refundPayment);
 router.post('/create-intent', createPaymentIntent);
 router.post('/confirm', confirmStripePayment);
+router.get('/config', getStripeConfig);
 
 module.exports = router;
 

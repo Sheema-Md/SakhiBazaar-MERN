@@ -1,191 +1,308 @@
+
 import { useState } from 'react';
-import {
-  CardElement,
-  useStripe,
-  useElements,
-} from '@stripe/react-stripe-js';
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import api from '../services/api';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const StripePaymentForm = ({
-  clientSecret,
-  orderId,
-  onPaymentSuccess,
-  onPaymentError,
-  totalAmount,
+    clientSecret,
+    orderId,
+    onPaymentSuccess,
+    onPaymentError,
+    totalAmount,
 }) => {
-  const stripe = useStripe();
-  const elements = useElements();
+    const stripe = useStripe();
+    const elements = useElements();
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [errorMessage, setErrorMessage] = useState(null);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+    const handleSubmit = async () => {
+        if (isProcessing) return;
 
+        if (!stripe || !elements) {
+            const message = 'Stripe is still loading. Please wait a moment.';
+            setErrorMessage(message);
+            onPaymentError?.(message);
+            return;
+        }
 
-    if (isProcessing) {
-      return;
-    }
+        const cardElement = elements.getElement(CardElement);
 
-    if (!stripe || !elements) {
-      setErrorMessage(
-        'Stripe is still loading. Please wait a moment and try again.'
-      );
-      return;
-    }
+        if (!cardElement) {
+            const message = 'Card payment form is not ready.';
+            setErrorMessage(message);
+            onPaymentError?.(message);
+            return;
+        }
 
-    const cardElement = elements.getElement(CardElement);
+        setIsProcessing(true);
+        setErrorMessage(null);
 
-    if (!cardElement) {
-      const message = 'Card details are not available.';
-      setErrorMessage(message);
-      onPaymentError?.(message);
-      return;
-    }
+        try {
+            /*
+             * --------------------------------------------------------
+             * STEP 1: CONFIRM PAYMENT WITH STRIPE
+             * --------------------------------------------------------
+             */
+            const { paymentIntent, error } =
+                await stripe.confirmCardPayment(clientSecret, {
+                    payment_method: {
+                        card: cardElement,
+                    },
+                });
 
-    if (!clientSecret) {
-      const message =
-        'Stripe payment could not be initialized. Please try again.';
-      setErrorMessage(message);
-      onPaymentError?.(message);
-      return;
-    }
+            /*
+             * --------------------------------------------------------
+             * STRIPE PAYMENT ERROR
+             * --------------------------------------------------------
+             */
+            if (error) {
+                console.error('Stripe payment error:', error);
 
-    if (!orderId) {
-      const message =
-        'Order ID is missing. Please restart checkout.';
-      setErrorMessage(message);
-      onPaymentError?.(message);
-      return;
-    }
+                const message =
+                    error.message || 'Your payment could not be completed.';
 
-    setIsProcessing(true);
-    setErrorMessage('');
+                setErrorMessage(message);
+                onPaymentError?.(message, 'failed');
 
-    try {
-      const { paymentIntent, error } =
-        await stripe.confirmCardPayment(clientSecret, {
-          payment_method: {
-            card: cardElement,
-          },
-        });
+                return;
+            }
 
-      if (error) {
-        const message =
-          error.message || 'Your card payment could not be completed.';
+            /*
+             * --------------------------------------------------------
+             * NO PAYMENT INTENT
+             * --------------------------------------------------------
+             */
+            if (!paymentIntent) {
+                const message =
+                    'Stripe did not return a payment result. Please try again.';
 
-        setErrorMessage(message);
-        onPaymentError?.(message);
-        return;
-      }
+                setErrorMessage(message);
+                onPaymentError?.(message, 'failed');
 
-      if (!paymentIntent) {
-        const message =
-          'Stripe did not return a payment result. Please try again.';
+                return;
+            }
 
-        setErrorMessage(message);
-        onPaymentError?.(message);
-        return;
-      }
+            /*
+             * --------------------------------------------------------
+             * PAYMENT SUCCESS
+             * --------------------------------------------------------
+             *
+             * IMPORTANT:
+             *
+             * We only call our backend after Stripe reports
+             * the PaymentIntent as succeeded.
+             */
+            if (paymentIntent.status === 'succeeded') {
+                try {
+                    /*
+                     * Tell our backend that Stripe successfully
+                     * completed the payment.
+                     */
+                    const response = await api.post('/payments/confirm', {
+                        orderId,
+                        paymentIntentId: paymentIntent.id,
+                    });
 
-      if (paymentIntent.status !== 'succeeded') {
-        const message = `Payment is ${paymentIntent.status}. Please complete the payment before continuing.`;
+                    /*
+                     * IMPORTANT:
+                     *
+                     * Checkout.jsx receives this callback and navigates
+                     * to /order-success.
+                     */
+                    await onPaymentSuccess?.({
+                        ...response.data,
+                        paymentIntentId: paymentIntent.id,
+                    });
+                } catch (confirmError) {
+                    console.error(
+                        'Backend payment confirmation error:',
+                        confirmError
+                    );
 
-        setErrorMessage(message);
-        onPaymentError?.(message);
-        return;
-      }
+                    const message =
+                        confirmError.response?.data?.message ||
+                        confirmError.message ||
+                        'Payment succeeded, but order confirmation failed.';
 
-      // Stripe succeeded.
-      // Now confirm the successful PaymentIntent in MongoDB.
-      const response = await api.post('/payments/confirm', {
-        orderId,
-        paymentIntentId: paymentIntent.id,
-      });
+                    setErrorMessage(message);
+                    onPaymentError?.(message, 'failed');
+                }
 
-      if (!response.data?.order) {
-        throw new Error(
-          'Payment succeeded, but the order confirmation was not returned by the server.'
-        );
-      }
+                return;
+            }
 
-      // Checkout handles cart clearing + redirect.
-      onPaymentSuccess?.(response.data);
-    } catch (err) {
-      console.error('Stripe payment confirmation error:', err);
+            /*
+             * --------------------------------------------------------
+             * OTHER STRIPE PAYMENT STATES
+             * --------------------------------------------------------
+             *
+             * Do NOT call these "successful".
+             */
+            if (paymentIntent.status === 'processing') {
+                const message =
+                    'Your payment is still processing. Please wait for confirmation.';
 
-      const message =
-        err.response?.data?.message ||
-        err.message ||
-        'Payment confirmation failed. Please check your order before trying again.';
+                setErrorMessage(message);
+                onPaymentError?.(message, 'processing');
 
-      setErrorMessage(message);
-      onPaymentError?.(message);
-    } finally {
-      setIsProcessing(false);
-    }
+                return;
+            }
 
+            if (paymentIntent.status === 'requires_payment_method') {
+                const message =
+                    'Payment was not completed. Please check your card details and try again.';
 
-  };
+                setErrorMessage(message);
+                onPaymentError?.(message, 'failed');
 
-  const cardElementOptions = {
-    style: {
-      base: {
-        fontSize: '15px',
-        color: '#1e293b',
-        fontFamily:
-          'Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-        '::placeholder': {
-          color: '#94a3b8',
+                return;
+            }
+
+            if (paymentIntent.status === 'canceled') {
+                const message =
+                    'Payment was cancelled. You can retry the payment.';
+
+                setErrorMessage(message);
+                onPaymentError?.(message, 'cancelled');
+
+                return;
+            }
+
+            /*
+             * --------------------------------------------------------
+             * UNKNOWN PAYMENT STATUS
+             * --------------------------------------------------------
+             */
+            const message =
+                `Payment status: ${paymentIntent.status}`;
+
+            setErrorMessage(message);
+            onPaymentError?.(message, 'failed');
+        } catch (err) {
+            console.error('Stripe payment processing error:', err);
+
+            const message =
+                err.response?.data?.message ||
+                err.message ||
+                'Payment could not be completed. Please try again.';
+
+            setErrorMessage(message);
+            onPaymentError?.(message, 'failed');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const cardElementOptions = {
+        style: {
+            base: {
+                fontSize: '15px',
+                color: '#1e293b',
+                fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+
+                '::placeholder': {
+                    color: '#94a3b8',
+                },
+            },
+
+            invalid: {
+                color: '#ef4444',
+            },
         },
-      },
-      invalid: {
-        color: '#ef4444',
-      },
-    },
-    hidePostalCode: true,
-  };
+    };
 
-  return (<form onSubmit={handleSubmit} className="space-y-4"> <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 focus-within:ring-2 focus-within:ring-rose-500 focus-within:bg-white focus-within:border-rose-300 transition-all duration-200"> <CardElement options={cardElementOptions} /> </div>
+    return (
+        <div className="space-y-4">
 
-    ```
-    {errorMessage && (
-      <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600 font-semibold">
-        <span>{errorMessage}</span>
-      </div>
-    )}
+            {/* ======================================================
+          CARD ELEMENT
+         ====================================================== */}
 
-    <button
-      type="submit"
-      disabled={!stripe || !elements || isProcessing}
-      className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-700 hover:to-purple-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-rose-200/50 hover:shadow-xl hover:shadow-rose-200/80 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {isProcessing ? (
-        <>
-          <Loader2
-            className="animate-spin"
-            size={16}
-          />
-          Processing Secure Payment...
-        </>
-      ) : (
-        <>
-          <CheckCircle2 size={16} />
+            <div
+                className="
+          border border-slate-200
+          rounded-xl
+          p-4
+          bg-slate-50
+          focus-within:ring-2
+          focus-within:ring-rose-500
+          focus-within:bg-white
+          focus-within:border-rose-300
+          transition-all
+          duration-200
+        "
+            >
+                <CardElement options={cardElementOptions} />
+            </div>
 
-          Pay ₹
-          {Number(totalAmount || 0).toLocaleString('en-IN')}
-        </>
-      )}
-    </button>
+            {/* ======================================================
+          ERROR MESSAGE
+         ====================================================== */}
 
-    <p className="text-[10px] text-gray-400 text-center">
-      Your card details are securely processed by Stripe.
-    </p>
-  </form>
+            {errorMessage && (
+                <div className="text-xs text-red-500 font-semibold px-1">
+                    {errorMessage}
+                </div>
+            )}
 
+            {/* ======================================================
+          PAYMENT BUTTON
+         ====================================================== */}
 
-  );
+            <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!stripe || !elements || isProcessing}
+                className="
+          w-full
+          flex
+          items-center
+          justify-center
+          gap-2
+          py-3
+          bg-gradient-to-r
+          from-rose-600
+          to-purple-600
+          hover:from-rose-700
+          hover:to-purple-700
+          text-white
+          font-bold
+          text-sm
+          rounded-xl
+          shadow-lg
+          shadow-rose-200/50
+          hover:shadow-xl
+          hover:shadow-rose-200/80
+          transition-all
+          duration-200
+          cursor-pointer
+          disabled:opacity-50
+          disabled:cursor-not-allowed
+        "
+            >
+                {isProcessing ? (
+                    <>
+                        <Loader2
+                            className="animate-spin"
+                            size={16}
+                        />
+
+                        Processing Secure Payment...
+                    </>
+                ) : (
+                    <>
+                        Pay ₹
+                        {totalAmount
+                            ? Number(totalAmount).toLocaleString('en-IN')
+                            : ''}
+                    </>
+                )}
+            </button>
+
+        </div>
+    );
 };
 
 export default StripePaymentForm;

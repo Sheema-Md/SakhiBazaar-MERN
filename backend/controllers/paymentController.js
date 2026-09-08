@@ -5,6 +5,14 @@ const Notification = require('../models/Notification');
 const { getIo, getActiveUserSocketId } = require('../config/socket');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+const getStripeConfig = (req, res) => {
+  const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
+  if (!publishableKey) {
+    return res.status(503).json({ message: 'Stripe publishable key is not configured on the backend' });
+  }
+  res.json({ publishableKey });
+};
+
 // Helper to push notification to a user
 const createAndSendNotification = async (recipientId, text) => {
   try {
@@ -61,6 +69,16 @@ const createPayment = async (req, res) => {
       return res.status(400).json({ message: 'Order has already been paid' });
     }
 
+    const existingPayment = await Payment.findOne({ order: orderId, paymentMethod });
+    if (existingPayment) {
+      return res.status(200).json({ payment: existingPayment, order, alreadyRecorded: true });
+    }
+
+    if (order.stripePaymentIntentId) {
+      const existingIntent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId);
+      return res.json({ clientSecret: existingIntent.client_secret, paymentIntentId: existingIntent.id });
+    }
+
     const isCod = paymentMethod === 'Cash on Delivery';
     const status = isCod ? 'pending' : 'completed';
     const finalOrderStatus = isCod ? 'Processing' : 'Confirmed';
@@ -80,6 +98,7 @@ const createPayment = async (req, res) => {
 
     // Update order status
     order.paymentStatus = status;
+    order.paymentMethod = paymentMethod;
     order.orderStatus = finalOrderStatus;
     if (!order.trackingNumber) {
       order.trackingNumber = `TRK_${Date.now()}`;
@@ -88,8 +107,8 @@ const createPayment = async (req, res) => {
     // Add timeline checkpoint
     order.timeline.push({
       status: finalOrderStatus,
-      description: isCod 
-        ? 'Order placed successfully via Cash on Delivery. Seller is packing items.' 
+      description: isCod
+        ? 'Order placed successfully via Cash on Delivery. Seller is packing items.'
         : 'Payment received successfully. Order confirmed.',
       timestamp: new Date()
     });
@@ -97,7 +116,7 @@ const createPayment = async (req, res) => {
     await order.save();
 
     // Trigger Notification for customer
-    const customerMsg = isCod 
+    const customerMsg = isCod
       ? `Your order #${order._id} has been placed successfully via Cash on Delivery!`
       : `Payment of ₹${serverAmount} successful! Your order #${order._id} has been confirmed.`;
     await createAndSendNotification(req.user._id, customerMsg);
@@ -148,8 +167,8 @@ const getPayments = async (req, res) => {
         .sort({ createdAt: -1 });
 
       // Filter payments where the order contains at least one of the seller's products
-      payments = allPayments.filter(pay => 
-        pay.order && pay.order.products.some(item => 
+      payments = allPayments.filter(pay =>
+        pay.order && pay.order.products.some(item =>
           item.product && productIds.includes(item.product._id.toString())
         )
       );
@@ -274,6 +293,9 @@ const createPaymentIntent = async (req, res) => {
       },
     });
 
+    order.stripePaymentIntentId = paymentIntent.id;
+    await order.save();
+
     res.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
@@ -299,8 +321,8 @@ const confirmStripePayment = async (req, res) => {
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
     if (paymentIntent.status !== 'succeeded') {
-      return res.status(400).json({ 
-        message: `Payment failed or incomplete. Status: ${paymentIntent.status}` 
+      return res.status(400).json({
+        message: `Payment failed or incomplete. Status: ${paymentIntent.status}`
       });
     }
 
@@ -316,7 +338,7 @@ const confirmStripePayment = async (req, res) => {
 
     // CROSS-VERIFY: ensure Stripe PaymentIntent matches this order (metadata check)
     if (paymentIntent.metadata && paymentIntent.metadata.orderId &&
-        paymentIntent.metadata.orderId !== orderId) {
+      paymentIntent.metadata.orderId !== orderId) {
       return res.status(400).json({ message: 'PaymentIntent does not match this order' });
     }
 
@@ -331,13 +353,14 @@ const confirmStripePayment = async (req, res) => {
       user: req.user._id,
       order: orderId,
       amount: order.totalAmount,
-      paymentMethod: 'Credit Card (Stripe)',
+      paymentMethod: 'Stripe Payment',
       paymentStatus: 'completed',
       transactionId: paymentIntentId,
     });
 
     // Update order status
     order.paymentStatus = 'completed';
+    order.paymentMethod = 'Stripe Payment';
     order.orderStatus = 'Confirmed';
     order.timeline.push({
       status: 'Confirmed',
@@ -371,6 +394,7 @@ const confirmStripePayment = async (req, res) => {
 };
 
 module.exports = {
+  getStripeConfig,
   createPayment,
   getPayments,
   refundPayment,

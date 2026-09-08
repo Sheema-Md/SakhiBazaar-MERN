@@ -1,4 +1,15 @@
 const Product = require('../models/Product');
+const Order = require('../models/Order');
+
+const recommendationScore = ({ product, category, tags, purchases, popularRank, locationMatch }) => {
+  const sharedTags = (product.tags || []).filter((tag) => tags.has(String(tag).toLowerCase())).length;
+  const tagScore = Math.min(sharedTags / Math.max((product.tags || []).length, 1), 1);
+  const categoryScore = String(product.category).toLowerCase() === String(category).toLowerCase() ? 1 : 0;
+  const purchaseScore = Math.min(purchases / 10, 1);
+  const popularityScore = Math.max(0, 1 - (popularRank / 20));
+  const locationScore = locationMatch ? 1 : 0;
+  return Number(((tagScore * 0.3) + (categoryScore * 0.25) + (purchaseScore * 0.25) + (popularityScore * 0.1) + (locationScore * 0.1)).toFixed(4));
+};
 const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
 
@@ -812,6 +823,77 @@ const getProductStatsByCategory = async (req, res) => {
   }
 };
 
+// Lightweight local ML recommendation contract. A future trained model can replace the scorer independently.
+const getRecommendations = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).select('category tags seller');
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    const candidates = { _id: { $ne: product._id }, status: 'active' };
+    const category = await Product.find({ ...candidates, category: product.category })
+      .sort({ ratings: -1, createdAt: -1 }).limit(8).lean();
+    const similar = product.tags?.length
+      ? await Product.find({ ...candidates, tags: { $in: product.tags } })
+        .sort({ ratings: -1, createdAt: -1 }).limit(8).lean()
+      : category;
+    const popular = await Product.find(candidates)
+      .sort({ ratings: -1, createdAt: -1 }).limit(8).lean();
+
+    const orderMatches = await Order.aggregate([
+      { $match: { 'products.product': product._id } },
+      { $unwind: '$products' },
+      { $match: { 'products.product': { $ne: product._id } } },
+      { $group: { _id: '$products.product', purchases: { $sum: '$products.quantity' } } },
+      { $sort: { purchases: -1 } },
+      { $limit: 8 },
+    ]);
+    const together = await Product.find({ ...candidates, _id: { $in: orderMatches.map((item) => item._id) } }).lean();
+    const purchaseHistory = req.user
+      ? await Order.find({ customer: req.user._id }).sort({ createdAt: -1 }).limit(10).populate('products.product').lean()
+      : [];
+    const historyIds = [...new Set(purchaseHistory.flatMap((order) => order.products.map((item) => String(item.product?._id || item.product))))]
+      .filter((id) => id !== String(product._id));
+    const historyProducts = historyIds.length ? await Product.find({ _id: { $in: historyIds }, status: 'active' }).lean() : [];
+    const defaultAddress = req.user?.savedAddresses?.find((address) => address.isDefault) || req.user?.savedAddresses?.[0];
+    const locationProducts = defaultAddress?.state
+      ? await Product.find({
+        ...candidates,
+        'deliveryLocations.state': { $regex: `^${defaultAddress.state}$`, $options: 'i' },
+      }).sort({ ratings: -1, createdAt: -1 }).limit(8).lean()
+      : [];
+
+    const purchaseCounts = new Map(orderMatches.map((item) => [String(item._id), item.purchases]));
+    const locationIds = new Set(locationProducts.map((item) => String(item._id)));
+    const scoredCandidates = [...new Map([...similar, ...popular, ...together, ...locationProducts]
+      .map((item) => [String(item._id), item])).values()]
+      .map((item, index) => ({
+        ...item,
+        mlScore: recommendationScore({
+          product: item,
+          category: product.category,
+          tags: new Set((product.tags || []).map((tag) => String(tag).toLowerCase())),
+          purchases: purchaseCounts.get(String(item._id)) || 0,
+          popularRank: index,
+          locationMatch: locationIds.has(String(item._id)),
+        }),
+      }))
+      .sort((left, right) => right.mlScore - left.mlScore);
+
+    res.json({
+      strategy: 'ml-hybrid-v1',
+      model: 'content-collaborative-linear-score',
+      generatedAt: new Date().toISOString(),
+      similar: scoredCandidates.slice(0, 4),
+      category: category.slice(0, 8),
+      frequentlyBoughtTogether: together,
+      popular,
+      purchaseHistory: historyProducts,
+      location: locationProducts,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Create a product review
 // @route   POST /api/products/:id/review
 // @access  Private
@@ -921,6 +1003,7 @@ module.exports = {
   getMyProducts,
   filterProducts,
   getProductStatsByCategory,
+  getRecommendations,
   createProductReview,
   searchProducts,
 };

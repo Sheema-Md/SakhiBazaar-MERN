@@ -9,10 +9,11 @@ const {
   getMyProducts,
   filterProducts,
   getProductStatsByCategory,
+  getRecommendations,
   createProductReview,
   searchProducts,
 } = require('../controllers/productController');
-const { protect, seller, sellerOrAdmin } = require('../middleware/authMiddleware');
+const { protect, optionalProtect, seller, sellerOrAdmin } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
 // Define multi-upload fields configuration
@@ -29,6 +30,7 @@ router.get('/', getProducts);
 router.get('/filter', filterProducts);
 router.get('/search', searchProducts);
 router.get('/stats/category', getProductStatsByCategory);
+router.get('/:id/recommendations', optionalProtect, getRecommendations);
 router.get('/:id', getProductById);
 
 // Define upload fields for reviews

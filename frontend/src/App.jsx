@@ -30,6 +30,7 @@ import CustomerDashboard from './pages/CustomerDashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
+import InfoPage from './pages/InfoPage';
 
 
 // ---------------------------------------------------------
@@ -89,6 +90,10 @@ function App() {
                         path="/forgot-password"
                         element={<ForgotPassword />}
                       />
+
+                      <Route path="/about" element={<InfoPage />} />
+                      <Route path="/privacy-policy" element={<InfoPage />} />
+                      <Route path="/terms-conditions" element={<InfoPage />} />
 
                       <Route
                         path="/product/:id"

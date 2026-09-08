@@ -18,7 +18,7 @@ const paymentSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     required: [true, 'Please add a payment method'],
-    enum: ['UPI', 'Credit Card', 'Debit Card', 'Net Banking', 'Wallet', 'Cash on Delivery'],
+    enum: ['UPI', 'Credit Card', 'Debit Card', 'Net Banking', 'Wallet', 'Stripe Payment', 'Cash on Delivery'],
   },
   paymentStatus: {
     type: String,

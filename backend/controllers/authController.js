@@ -39,6 +39,7 @@ const sendEmailHelper = async (to, subject, text, html) => {
   }
 };
 
+
 // Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -276,6 +277,34 @@ const getUserProfile = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+const getSavedAddresses = async (req, res) => {
+  const user = await User.findById(req.user._id).select('savedAddresses');
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  res.json(user.savedAddresses || []);
+};
+
+const saveAddress = async (req, res) => {
+  const { label, name, address, city, state, zip, country, isDefault } = req.body;
+  if (![name, address, city, state, zip].every((value) => String(value || '').trim())) return res.status(400).json({ message: 'Name, address, city, state and PIN code are required' });
+  const user = await User.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  if (isDefault || user.savedAddresses.length === 0) user.savedAddresses.forEach((saved) => { saved.isDefault = false; });
+  user.savedAddresses.push({ label: String(label || 'Home').trim(), name: name.trim(), address: address.trim(), city: city.trim(), state: state.trim(), zip: zip.trim(), country: String(country || 'India').trim(), isDefault: Boolean(isDefault) || user.savedAddresses.length === 0 });
+  await user.save();
+  res.status(201).json(user.savedAddresses[user.savedAddresses.length - 1]);
+};
+
+const deleteSavedAddress = async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  const address = user.savedAddresses.id(req.params.id);
+  if (!address) return res.status(404).json({ message: 'Saved address not found' });
+  address.deleteOne();
+  if (user.savedAddresses.length && !user.savedAddresses.some((item) => item.isDefault)) user.savedAddresses[0].isDefault = true;
+  await user.save();
+  res.json(user.savedAddresses);
 };
 
 // @desc    Update user profile
@@ -662,6 +691,9 @@ module.exports = {
   registerUser,
   loginUser,
   getUserProfile,
+  getSavedAddresses,
+  saveAddress,
+  deleteSavedAddress,
   updateUserProfile,
   getUserPreferences,
   updateUserPreferences,
