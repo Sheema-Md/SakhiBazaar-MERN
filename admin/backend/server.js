@@ -8,8 +8,16 @@ const User = require('./models/User');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-app.use(cors());
+if (!process.env.MONGO_URI || !process.env.JWT_SECRET) {
+  throw new Error('MONGO_URI and JWT_SECRET must be configured before starting the admin backend');
+}
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 // Mount routers
@@ -24,12 +32,12 @@ const seedDefaultAdmin = async () => {
   try {
     const adminExists = await User.findOne({ role: 'admin' });
     if (!adminExists) {
-      const email = process.env.INITIAL_ADMIN_EMAIL || 'admin@sakhibazaar.com';
-      const password = process.env.INITIAL_ADMIN_PASSWORD || 'Admin@Password123';
-      const name = process.env.INITIAL_ADMIN_NAME || 'Sakhi Bazaar Admin';
-      const username = process.env.INITIAL_ADMIN_USERNAME || 'admin';
-      const phoneNumber = process.env.INITIAL_ADMIN_PHONE || '9999999999';
-      const aadhaarNumber = process.env.INITIAL_ADMIN_AADHAAR || '999999999999';
+      const { INITIAL_ADMIN_EMAIL: email, INITIAL_ADMIN_PASSWORD: password, INITIAL_ADMIN_NAME: name,
+        INITIAL_ADMIN_USERNAME: username, INITIAL_ADMIN_PHONE: phoneNumber,
+        INITIAL_ADMIN_AADHAAR: aadhaarNumber } = process.env;
+      if (!email || !password || !name || !username || !phoneNumber || !aadhaarNumber) {
+        throw new Error('All INITIAL_ADMIN_* variables are required when seeding the first admin');
+      }
 
       console.log(`No administrator found. Seeding initial administrator (${email})...`);
       await User.create({
@@ -52,7 +60,7 @@ const seedDefaultAdmin = async () => {
 };
 
 // Database connection
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/sakhibazaar';
+const mongoURI = process.env.MONGO_URI;
 mongoose.connect(mongoURI)
   .then(async () => {
     console.log('Admin backend connected to MongoDB database successfully.');
@@ -63,4 +71,5 @@ mongoose.connect(mongoURI)
   })
   .catch(err => {
     console.error('Admin MongoDB connection error:', err.message);
+    process.exit(1);
   });

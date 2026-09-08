@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { AdminAuthContext } from '../context/AdminAuthContext';
 import MarketPriceWidget from '../components/MarketPriceWidget';
+import { ADMIN_API_URL, MAIN_API_URL } from '../config/api';
 import {
   ShieldAlert, Users, ShoppingBag, Tag, CreditCard, Sparkles, Key, LogOut,
   Sun, Moon, CheckCircle, AlertCircle, Trash2, Shield, Eye, Globe, UserCheck
@@ -43,10 +44,10 @@ const AdminDashboard = () => {
       };
 
       const [resUsers, resProducts, resOrders, resAnalytics] = await Promise.all([
-        axios.get('http://localhost:5001/api/admin/users', config),
-        axios.get('http://localhost:5001/api/admin/products', config),
-        axios.get('http://localhost:5001/api/admin/orders', config),
-        axios.get('http://localhost:5001/api/admin/analytics', config),
+        axios.get(`${ADMIN_API_URL}/users`, config),
+        axios.get(`${ADMIN_API_URL}/products`, config),
+        axios.get(`${ADMIN_API_URL}/orders`, config),
+        axios.get(`${ADMIN_API_URL}/analytics`, config),
       ]);
 
       setUsers(resUsers.data || []);
@@ -69,14 +70,14 @@ const AdminDashboard = () => {
   const handleUpdateUserStatus = async (userId, newStatus) => {
     try {
       await axios.put(
-        `http://localhost:5001/api/admin/users/${userId}/status`,
+        `${ADMIN_API_URL}/users/${userId}/status`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${adminUser.token}` } }
       );
       setUsers(users.map(u => u._id === userId ? { ...u, status: newStatus } : u));
       alert(`User status updated to "${newStatus}"!`);
       // Reload stats
-      const resAnalytics = await axios.get('http://localhost:5001/api/admin/analytics', {
+      const resAnalytics = await axios.get(`${ADMIN_API_URL}/analytics`, {
         headers: { Authorization: `Bearer ${adminUser.token}` }
       });
       setAnalytics(resAnalytics.data?.metrics || null);
@@ -89,7 +90,7 @@ const AdminDashboard = () => {
   const handleUpdateProductStatus = async (productId, newStatus) => {
     try {
       await axios.put(
-        `http://localhost:5001/api/admin/products/${productId}/status`,
+        `${ADMIN_API_URL}/products/${productId}/status`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${adminUser.token}` } }
       );
@@ -104,7 +105,7 @@ const AdminDashboard = () => {
   const handleDeleteUser = async (userId, name) => {
     if (window.confirm(`Are you sure you want to remove user account: "${name}"?`)) {
       try {
-        await axios.delete(`http://localhost:5001/api/admin/users/${userId}`, {
+        await axios.delete(`${ADMIN_API_URL}/users/${userId}`, {
           headers: { Authorization: `Bearer ${adminUser.token}` },
         });
         setUsers(users.filter(u => u._id !== userId));
@@ -119,7 +120,7 @@ const AdminDashboard = () => {
   const handleDeleteProduct = async (prodId, title) => {
     if (window.confirm(`Are you sure you want to remove product: "${title}"?`)) {
       try {
-        await axios.delete(`http://localhost:5001/api/admin/products/${prodId}`, {
+        await axios.delete(`${ADMIN_API_URL}/products/${prodId}`, {
           headers: { Authorization: `Bearer ${adminUser.token}` },
         });
         setProducts(products.filter(p => p._id !== prodId));
@@ -144,7 +145,7 @@ const AdminDashboard = () => {
     try {
       // In standalone, admin password updates point to the main profile update on 5000 or a mockup
       await axios.put(
-        'http://localhost:5000/api/auth/profile',
+        `${MAIN_API_URL}/auth/profile`,
         { password: passwordData.newPassword },
         { headers: { Authorization: `Bearer ${adminUser.token}` } }
       );
@@ -168,7 +169,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex transition-colors duration-300 font-sans">
-      
+
       {/* Sidebar Navigation */}
       <aside className="w-64 bg-white dark:bg-slate-800 border-r border-rose-100/30 dark:border-slate-700/60 flex flex-col justify-between shrink-0">
         <div>
@@ -186,11 +187,10 @@ const AdminDashboard = () => {
                 <button
                   key={item.view}
                   onClick={() => setSearchParams({ view: item.view })}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                    active
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${active
                       ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-100/20 dark:border-rose-900/30'
                       : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-750/30 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Icon size={16} />
                   {item.label}
@@ -222,7 +222,7 @@ const AdminDashboard = () => {
 
       {/* Main Workspace */}
       <main className="flex-grow p-6 sm:p-8 overflow-y-auto max-h-screen space-y-6">
-        
+
         {error && (
           <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 text-red-700 text-xs font-bold rounded-2xl">
             {error}
@@ -250,7 +250,7 @@ const AdminDashboard = () => {
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-rose-100/30 dark:border-slate-700 shadow-xs">
                   <p className="text-xs text-slate-405 font-bold">Market Listings</p>
                   <h3 className="text-xl font-black mt-1 text-slate-850 dark:text-white">{analytics.productsCount}</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Moderated: {products.filter(p=>p.status==='flagged').length} Flagged</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Moderated: {products.filter(p => p.status === 'flagged').length} Flagged</p>
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-rose-100/30 dark:border-slate-700 shadow-xs">
                   <p className="text-xs text-slate-405 font-bold">Gross Volume (GMV)</p>
@@ -268,10 +268,10 @@ const AdminDashboard = () => {
             {/* Pending Vetting Queue */}
             <div className="bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700 rounded-3xl p-6 shadow-sm">
               <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-1.5"><Sun size={16} className="text-rose-500" /> Pending Seller Vetting Queue</h3>
-              
-              {users.filter(u=>u.role==='seller' && u.status==='pending').length > 0 ? (
+
+              {users.filter(u => u.role === 'seller' && u.status === 'pending').length > 0 ? (
                 <div className="divide-y divide-rose-50 dark:divide-slate-750">
-                  {users.filter(u=>u.role==='seller' && u.status==='pending').map(seller => (
+                  {users.filter(u => u.role === 'seller' && u.status === 'pending').map(seller => (
                     <div key={seller._id} className="py-3 flex justify-between items-center text-xs">
                       <div>
                         <p className="font-bold text-slate-850 dark:text-white">{seller.name} (@{seller.username})</p>
@@ -330,16 +330,14 @@ const AdminDashboard = () => {
                           <p className="text-[9px] font-mono text-slate-400">Aadhaar: {u.aadhaarNumber || 'N/A'}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold ${
-                            u.role === 'seller' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                          }`}>{u.role}</span>
+                          <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold ${u.role === 'seller' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                            }`}>{u.role}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                            u.status === 'approved' ? 'bg-green-150 text-green-800' :
-                            u.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>{u.status}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${u.status === 'approved' ? 'bg-green-150 text-green-800' :
+                              u.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                'bg-red-100 text-red-800'
+                            }`}>{u.status}</span>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
@@ -372,7 +370,7 @@ const AdminDashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {users.filter(u=>u.role==='seller').map((seller) => (
+              {users.filter(u => u.role === 'seller').map((seller) => (
                 <div key={seller._id} className="bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
@@ -380,11 +378,10 @@ const AdminDashboard = () => {
                       <p className="text-sm font-bold text-slate-850 dark:text-white mt-1">{seller.name}</p>
                       <p className="text-xs text-slate-450">@{seller.username} | {seller.email}</p>
                     </div>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                      seller.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      seller.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>{seller.status}</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${seller.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        seller.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                          'bg-red-100 text-red-800'
+                      }`}>{seller.status}</span>
                   </div>
 
                   <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl space-y-1.5 text-xs">
@@ -430,7 +427,7 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-rose-50 dark:divide-slate-750 font-semibold font-sans">
-                    {users.filter(u=>u.role==='customer').map((customer) => (
+                    {users.filter(u => u.role === 'customer').map((customer) => (
                       <tr key={customer._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-750/30">
                         <td className="px-6 py-4 font-bold text-slate-850 dark:text-slate-105">{customer.name}</td>
                         <td className="px-6 py-4 text-slate-500">{customer.email}</td>
@@ -485,9 +482,8 @@ const AdminDashboard = () => {
                         <td className="px-6 py-4 font-bold">{p.seller?.name || 'Seller'}</td>
                         <td className="px-6 py-4 font-bold text-rose-600">₹{p.price}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                            p.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-800'
-                          }`}>{p.status}</span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${p.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-800'
+                            }`}>{p.status}</span>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
@@ -617,11 +613,11 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500">New Password</label>
-                  <input type="password" required value={passwordData.newPassword} onChange={(e)=>setPasswordData({...passwordData, newPassword: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
+                  <input type="password" required value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500">Confirm Password</label>
-                  <input type="password" required value={passwordData.confirmPassword} onChange={(e)=>setPasswordData({...passwordData, confirmPassword: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
+                  <input type="password" required value={passwordData.confirmPassword} onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-755 text-xs text-slate-850 dark:text-slate-105 rounded-xl focus:outline-none" />
                 </div>
               </div>
               <button type="submit" className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold cursor-pointer">

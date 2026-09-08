@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { ThemeContext } from './ThemeContext';
 import { AuthContext } from './AuthContext';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 export const ThemeProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
@@ -24,7 +25,7 @@ export const ThemeProvider = ({ children }) => {
     const fetchUserPreferences = async () => {
       if (user && user.token) {
         try {
-          const res = await axios.get('http://localhost:5000/api/auth/preferences', {
+          const res = await axios.get(`${API_URL}/auth/preferences`, {
             headers: { Authorization: `Bearer ${user.token}` },
           });
           if (res.data && res.data.theme) {
@@ -46,7 +47,7 @@ export const ThemeProvider = ({ children }) => {
     if (user && user.token) {
       try {
         await axios.put(
-          'http://localhost:5000/api/auth/preferences',
+          `${API_URL}/auth/preferences`,
           { theme: newTheme },
           { headers: { Authorization: `Bearer ${user.token}` } }
         );

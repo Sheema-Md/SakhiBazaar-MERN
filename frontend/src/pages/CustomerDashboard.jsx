@@ -5,13 +5,14 @@ import { AuthContext } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { API_URL } from '../config/api';
 import { useCart } from '../context/CartContext';
 import CategoryTreeFilter from '../components/CategoryTreeFilter';
 import ProductCard from '../components/ProductCard';
 import DeliveryTrackingUI from '../components/DeliveryTrackingUI';
 import {
   ShoppingBag, Heart, Star, CheckCircle, MessageSquare, Edit2,
-  Camera, ShoppingCart, Trash, Bell, MapPin, Sparkles, RefreshCw, Printer,
+  Camera, ShoppingCart, Bell, Sparkles, RefreshCw, Printer,
   Plus, Minus, ArrowLeft, CreditCard, Clock, Trash2, RotateCcw, X, AlertCircle, Banknote
 } from 'lucide-react';
 
@@ -109,7 +110,7 @@ const CustomerDashboard = () => {
   const loadProfile = async () => {
     if (user && user.token) {
       try {
-        const res = await axios.get('http://localhost:5000/api/auth/profile', {
+        const res = await axios.get(`${API_URL}/auth/profile`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setProfileData({
@@ -131,7 +132,7 @@ const CustomerDashboard = () => {
   const loadOrders = async () => {
     if (user && user.token) {
       try {
-        const res = await axios.get('http://localhost:5000/api/orders/history', {
+        const res = await axios.get(`${API_URL}/orders/history`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setOrders(res.data || []);
@@ -147,7 +148,7 @@ const CustomerDashboard = () => {
   const loadPayments = async () => {
     if (user && user.token) {
       try {
-        const res = await axios.get('http://localhost:5000/api/payments', {
+        const res = await axios.get(`${API_URL}/payments`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setPayments(res.data || []);
@@ -162,10 +163,10 @@ const CustomerDashboard = () => {
   const loadNotifications = async () => {
     if (user && user.token) {
       try {
-        const res = await axios.get('http://localhost:5000/api/notifications', {
+        const res = await axios.get(`${API_URL}/notifications`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
-        setNotifications(res.data || []);
+        setNotifications(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error('Failed to fetch notifications:', err.message);
       }
@@ -197,8 +198,8 @@ const CustomerDashboard = () => {
             ...browseFilters,
             search: browseSearch
           };
-          const res = await axios.get('http://localhost:5000/api/products/filter', { params: queryParams });
-          setFilteredProducts(res.data || []);
+          const res = await axios.get(`${API_URL}/products/filter`, { params: queryParams });
+          setFilteredProducts(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
           console.error('Failed to filter products:', err.message);
         } finally {
@@ -218,7 +219,7 @@ const CustomerDashboard = () => {
     setLoading(true);
     try {
       const res = await axios.put(
-        'http://localhost:5000/api/auth/profile',
+        `${API_URL}/auth/profile`,
         {
           name: profileData.name,
           phone: profileData.phone,
@@ -227,7 +228,7 @@ const CustomerDashboard = () => {
         },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
-      localStorage.setItem('sakhi_user', JSON.stringify({ ...user, ...res.data }));
+      sessionStorage.setItem('sakhi_user', JSON.stringify({ ...user, ...res.data }));
       setIsEditing(false);
       alert(t('profileUpdated') || 'Profile details updated successfully!');
     } catch (err) {
@@ -250,7 +251,7 @@ const CustomerDashboard = () => {
     setLoading(true);
     try {
       await axios.put(
-        'http://localhost:5000/api/auth/profile',
+        `${API_URL}/auth/profile`,
         { password: passwordData.newPassword },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -290,7 +291,7 @@ const CustomerDashboard = () => {
 
     try {
       await axios.post(
-        `http://localhost:5000/api/products/${reviewingItem.productId}/review`,
+        `${API_URL}/products/${reviewingItem.productId}/review`,
         { rating, comment },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -451,7 +452,7 @@ const CustomerDashboard = () => {
 
 
       const response = await axios.post(
-        `http://localhost:5000/api/return-refund/${order._id}/return`,
+        `${API_URL}/return-refund/${order._id}/return`,
         formData,
         {
           headers: {
@@ -485,7 +486,7 @@ const CustomerDashboard = () => {
 
   const handleTrackOrder = async (orderId) => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/orders/track/${orderId}`, {
+      const res = await axios.get(`${API_URL}/orders/track/${orderId}`, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
       setOrderTracking(res.data);

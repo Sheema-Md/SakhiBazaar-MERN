@@ -8,6 +8,7 @@ import {
   User,
   CheckCircle2
 } from 'lucide-react';
+import { ADMIN_APP_URL } from '../config/api';
 
 const Login = () => {
   const { user, login, loginWithGoogle } = useContext(AuthContext);
@@ -24,7 +25,7 @@ const Login = () => {
     if (!user) return;
 
     if (user.role === 'admin') {
-      window.location.href = 'http://localhost:5174/login';
+      window.location.href = `${ADMIN_APP_URL}/login`;
       return;
     }
 

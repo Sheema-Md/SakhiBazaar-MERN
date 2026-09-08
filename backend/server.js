@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const mongoose = require('mongoose');
 require('dotenv').config();
 const connectDB = require('./config/db');
 const { initSocket } = require('./config/socket');
@@ -54,10 +55,22 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const marketRoutes = require('./routes/marketRoutes');
 const returnRefundRoutes = require('./routes/returnRefundRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.includes('your_')) {
+  throw new Error('JWT_SECRET must be configured before starting the backend');
+}
+if (!process.env.MONGO_URI || process.env.MONGO_URI.includes('your_')) {
+  throw new Error('MONGO_URI must be configured before starting the backend');
+}
 
 // Disable x-powered-by header and apply security response headers
 app.disable('x-powered-by');
@@ -68,17 +81,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configure CORS dynamically to support localhost development origins and enable credentials
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-      return callback(null, true);
-    }
-    return callback(null, true);
+    return callback(null, allowedOrigins.includes(origin));
   },
   credentials: true
 }));
+
+// Stripe signs the raw request body, so this route must precede JSON parsing.
+app.use('/api/webhooks/stripe', webhookRoutes);
 app.use(express.json());
 
 // Routes with /api prefix

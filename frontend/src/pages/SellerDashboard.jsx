@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext.jsx';
+import { API_URL } from '../config/api';
 import CategoryTreeFilter from '../components/CategoryTreeFilter';
 import ProductCard from '../components/ProductCard';
 import {
@@ -18,7 +19,7 @@ import MarketPriceWidget from '../components/MarketPriceWidget';
 import {
   ShoppingBag, Edit, Trash2, CheckCircle, DollarSign, Mail, Camera,
   RefreshCw, Sparkles, Heart, ShoppingCart, Globe, AlertCircle,
-  Trash, MapPin, Truck, TrendingUp, Key, Search, X, ChevronLeft, ChevronRight
+  MapPin, Truck, TrendingUp, Key, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const CATEGORY_TREE = {
@@ -175,10 +176,10 @@ const SellerDashboard = () => {
       setLoading(true);
       setError('');
       try {
-        const res = await axios.get('http://localhost:5000/api/products/seller/me', {
+        const res = await axios.get(`${API_URL}/products/seller/me`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
-        setProducts(res.data || []);
+        setProducts(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         setError('Failed to fetch your inventory.');
         console.error(err);
@@ -192,7 +193,7 @@ const SellerDashboard = () => {
   const fetchMyOrders = async () => {
     if (user && user.token) {
       try {
-        const res = await axios.get('http://localhost:5000/api/orders/history', {
+        const res = await axios.get(`${API_URL}/orders/history`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setOrders(res.data || []);
@@ -208,7 +209,7 @@ const SellerDashboard = () => {
   const fetchShipments = async () => {
     if (user && user.token) {
       try {
-        const res = await axios.get('http://localhost:5000/api/shipments', {
+        const res = await axios.get(`${API_URL}/shipments`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setShipments(res.data || []);
@@ -222,7 +223,7 @@ const SellerDashboard = () => {
   const loadProfile = async () => {
     if (user && user.token) {
       try {
-        const res = await axios.get('http://localhost:5000/api/auth/profile', {
+        const res = await axios.get(`${API_URL}/auth/profile`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setProfileData({
@@ -245,7 +246,7 @@ const SellerDashboard = () => {
   const fetchCategoryStats = async (categoryName) => {
     if (!categoryName) return;
     try {
-      const res = await axios.get(`http://localhost:5000/api/products/stats/category?category=${categoryName}`);
+      const res = await axios.get(`${API_URL}/products/stats/category?category=${categoryName}`);
       setCategoryStats(res.data);
     } catch (err) {
       console.error('Failed to load category stats:', err);
@@ -292,7 +293,7 @@ const SellerDashboard = () => {
     const loadEditProduct = async () => {
       if (currentView === 'edit-product' && editingProductId) {
         try {
-          const res = await axios.get(`http://localhost:5000/api/products/${editingProductId}`);
+          const res = await axios.get(`${API_URL}/products/${editingProductId}`);
           const p = res.data;
           setEditTitle(p.title);
           setEditCategory(p.category);
@@ -339,8 +340,8 @@ const SellerDashboard = () => {
             ...browseFilters,
             search: browseSearch
           };
-          const res = await axios.get('http://localhost:5000/api/products/filter', { params: queryParams });
-          setFilteredProducts(res.data || []);
+          const res = await axios.get(`${API_URL}/products/filter`, { params: queryParams });
+          setFilteredProducts(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
           console.error('Failed to filter products:', err.message);
         } finally {
@@ -416,7 +417,7 @@ const SellerDashboard = () => {
     setLoading(true);
     try {
       const res = await axios.put(
-        'http://localhost:5000/api/auth/profile',
+        `${API_URL}/auth/profile`,
         {
           name: profileData.name,
           phone: profileData.phone,
@@ -425,7 +426,7 @@ const SellerDashboard = () => {
         },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
-      localStorage.setItem('sakhi_user', JSON.stringify({ ...user, ...res.data }));
+      sessionStorage.setItem('sakhi_user', JSON.stringify({ ...user, ...res.data }));
       alert('Profile details updated successfully!');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update profile.');
@@ -445,7 +446,7 @@ const SellerDashboard = () => {
     setLoading(true);
     try {
       await axios.put(
-        'http://localhost:5000/api/auth/profile',
+        `${API_URL}/auth/profile`,
         { password: passwordData.newPassword },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -599,7 +600,7 @@ const SellerDashboard = () => {
 
     setLoading(true);
     try {
-      await axios.post('http://localhost:5000/api/products', formData, {
+      await axios.post(`${API_URL}/products`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${user.token}`,
@@ -671,7 +672,7 @@ const SellerDashboard = () => {
 
     setLoading(true);
     try {
-      await axios.put(`http://localhost:5000/api/products/${editingProductId}`, formData, {
+      await axios.put(`${API_URL}/products/${editingProductId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${user.token}`,
@@ -699,7 +700,7 @@ const SellerDashboard = () => {
     setIsGeneratingDesc(true);
     try {
       const response = await axios.post(
-        'http://localhost:5000/api/ai/generate-description',
+        `${API_URL}/ai/generate-description`,
         { title: activeTitle, category: activeCategory, keywords: activeDesc },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -726,7 +727,7 @@ const SellerDashboard = () => {
     setIsGeneratingCaption(true);
     try {
       const response = await axios.post(
-        'http://localhost:5000/api/ai/generate-caption',
+        `${API_URL}/ai/generate-caption`,
         { title: activeTitle, description: activeDesc },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -744,7 +745,7 @@ const SellerDashboard = () => {
   const handleDelete = async (id, title) => {
     if (window.confirm(`Are you sure you want to delete product: "${title}"?`)) {
       try {
-        await axios.delete(`http://localhost:5000/api/products/${id}`, {
+        await axios.delete(`${API_URL}/products/${id}`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setProducts(products.filter((p) => p._id !== id));
@@ -759,7 +760,7 @@ const SellerDashboard = () => {
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       await axios.put(
-        `http://localhost:5000/api/orders/status/${orderId}`,
+        `${API_URL}/orders/status/${orderId}`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
@@ -778,7 +779,7 @@ const SellerDashboard = () => {
 
     try {
       await axios.put(
-        `http://localhost:5000/api/shipments/${updatingShipmentId}`,
+        `${API_URL}/shipments/${updatingShipmentId}`,
         {
           status: shipStatusUpdate || undefined,
           trackingNumber: trackingNumUpdate || undefined,

@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AdminAuthProvider } from './context/AdminAuthContext';
 import Login from './pages/Login';
-import AdminDashboard from './pages/AdminDashboard';
+import AdminDashboard from './pages/AdminDashboardComplete';
 import { useContext } from 'react';
 import { AdminAuthContext } from './context/AdminAuthContext';
 

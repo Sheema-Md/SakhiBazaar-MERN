@@ -10,6 +10,10 @@ const {
   deleteProduct,
   getOrders,
   getAnalytics,
+  updateOrderStatus,
+  getCategories, createCategory, updateCategory, deleteCategory,
+  getReturns, updateReturn, getRefunds, updateRefund,
+  getNotifications, getMarketData, updateMarketPrice, getReport,
 } = require('../controllers/adminController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
@@ -29,6 +33,19 @@ router.put('/products/:id/status', updateProductStatus);
 router.delete('/products/:id', deleteProduct);
 
 router.get('/orders', getOrders);
+router.put('/orders/:id/status', updateOrderStatus);
 router.get('/analytics', getAnalytics);
+router.get('/categories', getCategories);
+router.post('/categories', createCategory);
+router.put('/categories/:id', updateCategory);
+router.delete('/categories/:id', deleteCategory);
+router.get('/returns', getReturns);
+router.put('/returns/:orderId/:requestIndex', updateReturn);
+router.get('/refunds', getRefunds);
+router.put('/refunds/:orderId/:requestIndex', updateRefund);
+router.get('/notifications', getNotifications);
+router.get('/market-data', getMarketData);
+router.put('/market-data/prices/:id', updateMarketPrice);
+router.get('/reports/revenue', getReport);
 
 module.exports = router;

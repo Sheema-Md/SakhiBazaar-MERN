@@ -1,13 +1,14 @@
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: API_URL,
 });
 
 // Request interceptor to automatically add the JWT token if logged in
 api.interceptors.request.use(
   (config) => {
-    const storedUser = localStorage.getItem('sakhi_user');
+    const storedUser = sessionStorage.getItem('sakhi_user');
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
@@ -33,7 +34,7 @@ api.interceptors.response.use(
       const msg = error.response.data?.message || '';
       if (msg.includes('user not found') || msg.includes('token failed') || msg.includes('jwt expired')) {
         console.warn('Stale or invalid token detected. Clearing localStorage session...');
-        localStorage.removeItem('sakhi_user');
+        sessionStorage.removeItem('sakhi_user');
       }
     }
     return Promise.reject(error);

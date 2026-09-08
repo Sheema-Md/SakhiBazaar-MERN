@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AdminAuthContext } from '../context/AdminAuthContext';
 import { ShieldAlert, Key, Mail, RefreshCw } from 'lucide-react';
+import { ADMIN_API_URL } from '../config/api';
 
 const Login = () => {
   const { adminUser, login } = useContext(AdminAuthContext);
@@ -25,7 +26,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:5001/api/admin/auth/login', {
+      const res = await axios.post(`${ADMIN_API_URL}/auth/login`, {
         emailOrUsername,
         password,
       });
@@ -41,7 +42,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
       <div className="max-w-md w-full bg-white dark:bg-slate-800 border border-rose-100/30 dark:border-slate-700/60 p-8 rounded-3xl shadow-xl space-y-6">
-        
+
         {/* Brand Header */}
         <div className="text-center">
           <div className="mx-auto w-12 h-12 bg-rose-50 dark:bg-rose-950/20 rounded-2xl flex items-center justify-center text-rose-500 mb-4">

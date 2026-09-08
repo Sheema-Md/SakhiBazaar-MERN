@@ -7,6 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
 import { useCart } from '../context/CartContext.jsx';
 import { useWishlist } from '../context/WishlistContext';
+import { API_URL } from '../config/api';
 
 import {
   Bell,
@@ -26,8 +27,6 @@ import {
   MessageSquare,
   X
 } from 'lucide-react';
-
-const API_URL = 'http://localhost:5000';
 
 const Header = ({ onMenuClick }) => {
   const { user, logout } = useContext(AuthContext);
@@ -139,7 +138,7 @@ const Header = ({ onMenuClick }) => {
           setIsSearching(true);
 
           const res = await axios.get(
-            `http://localhost:5000/api/products/search?keyword=${encodeURIComponent(query)}`,
+            `${API_URL}/products/search?keyword=${encodeURIComponent(query)}`,
             {
               signal: controller.signal,
             }
@@ -272,7 +271,7 @@ const Header = ({ onMenuClick }) => {
 
       try {
         const response = await axios.get(
-          `${API_URL}/api/notifications`,
+          `${API_URL}/notifications`,
           {
             headers: {
               Authorization: `Bearer ${user.token}`
@@ -280,7 +279,7 @@ const Header = ({ onMenuClick }) => {
           }
         );
 
-        const data = response.data || [];
+        const data = Array.isArray(response.data) ? response.data : [];
 
         setNotifications(data);
         setUnreadCount(

@@ -2,6 +2,7 @@ import { useEffect, useState, useContext } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 import { SocketContext } from './SocketContext';
+import { API_ORIGIN } from '../config/api';
 
 export const SocketProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
@@ -21,7 +22,7 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    const socketUrl = 'http://localhost:5000';
+    const socketUrl = API_ORIGIN;
     console.log('Initializing Socket.io connection to:', socketUrl);
 
     // Establish WebSocket connection passing token in handshake

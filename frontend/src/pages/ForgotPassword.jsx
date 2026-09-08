@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useLanguage } from '../context/LanguageContext';
 import { KeyRound, Mail, ArrowLeft, ShieldCheck, CheckCircle } from 'lucide-react';
+import { API_URL } from '../config/api';
 
 const ForgotPassword = () => {
   const { t } = useLanguage();
@@ -29,7 +30,7 @@ const ForgotPassword = () => {
     setMessage('');
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/forgot-password', { email });
+      const res = await axios.post(`${API_URL}/auth/forgot-password`, { email });
       setMessage(res.data.message || 'OTP sent successfully.');
       setStep('otp');
     } catch (err) {
@@ -48,7 +49,7 @@ const ForgotPassword = () => {
     setError('');
 
     try {
-      await axios.post('http://localhost:5000/api/auth/verify-otp', { email, otp });
+      await axios.post(`${API_URL}/auth/verify-otp`, { email, otp });
       setStep('reset');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid OTP code.');
@@ -71,7 +72,7 @@ const ForgotPassword = () => {
     setError('');
 
     try {
-      await axios.post('http://localhost:5000/api/auth/reset-password', {
+      await axios.post(`${API_URL}/auth/reset-password`, {
         email,
         otp,
         password,

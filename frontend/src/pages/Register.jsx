@@ -12,6 +12,7 @@ import {
   Phone,
   CreditCard
 } from 'lucide-react';
+import { ADMIN_APP_URL } from '../config/api';
 
 const Register = () => {
   const { user, register, loginWithGoogle } = useContext(AuthContext);
@@ -37,7 +38,7 @@ const Register = () => {
   useEffect(() => {
     if (user) {
       if (user.role === 'admin') {
-        window.location.href = 'http://localhost:5174/login';
+        window.location.href = `${ADMIN_APP_URL}/login`;
       }
       else if (user.role === 'seller') navigate('/dashboard');
       else navigate('/customer-dashboard');
@@ -82,7 +83,7 @@ const Register = () => {
 
     if (result.success) {
       // Navigates automatically due to useEffect, but fallback:
-      const stored = localStorage.getItem('sakhi_user');
+      const stored = sessionStorage.getItem('sakhi_user');
       if (stored) {
         const loggedUser = JSON.parse(stored);
         if (loggedUser.role === 'seller') navigate('/dashboard');

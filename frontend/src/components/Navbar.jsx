@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useCart } from '../context/CartContext.jsx';
 import { useLanguage } from '../context/LanguageContext';
+import { ADMIN_APP_URL } from '../config/api';
 import { ShoppingBag, LogOut, LayoutDashboard, PlusCircle, MessageSquare, ShoppingCart, Globe } from 'lucide-react';
 
 const Navbar = () => {
@@ -116,7 +117,7 @@ const Navbar = () => {
 
                 {user.role === 'admin' && (
                   <a
-                    href="http://localhost:5174"
+                    href={ADMIN_APP_URL}
                     className="text-gray-800 dark:text-white hover:text-rose-600 px-3 py-2 rounded-lg text-base font-bold flex items-center gap-1.5 transition-colors"
                   >
                     <LayoutDashboard size={18} />

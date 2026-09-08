@@ -5,10 +5,15 @@ let io;
 const activeUsers = new Map(); // maps userId (string) -> socketId (string)
 
 const initSocket = (server) => {
+  const allowedOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   io = new Server(server, {
     cors: {
       origin: (origin, callback) => {
-        callback(null, true);
+        callback(null, !origin || allowedOrigins.includes(origin));
       },
       methods: ['GET', 'POST'],
       credentials: true

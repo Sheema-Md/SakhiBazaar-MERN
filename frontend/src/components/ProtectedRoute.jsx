@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, loading } = useContext(AuthContext);
+  const { user, loading, logout } = useContext(AuthContext);
 
   if (loading) {
     return (
@@ -42,7 +42,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
           </div>
           <button
             onClick={() => {
-              localStorage.clear();
+              logout();
               window.location.href = '/login';
             }}
             className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"

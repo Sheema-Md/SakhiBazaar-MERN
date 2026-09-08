@@ -1,16 +1,24 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 
+const requiredEnv = (name) => {
+  const value = process.env[name];
+  if (!value || value.includes('your_')) {
+    throw new Error(`${name} must be configured before starting the backend`);
+  }
+  return value;
+};
+
 const seedDefaultAdmin = async () => {
   try {
     const adminExists = await User.findOne({ role: 'admin' });
     if (!adminExists) {
-      const email = process.env.INITIAL_ADMIN_EMAIL || 'admin@sakhibazaar.com';
-      const password = process.env.INITIAL_ADMIN_PASSWORD || 'Admin@Password123';
-      const name = process.env.INITIAL_ADMIN_NAME || 'Sakhi Bazaar Admin';
-      const username = process.env.INITIAL_ADMIN_USERNAME || 'admin';
-      const phoneNumber = process.env.INITIAL_ADMIN_PHONE || '9999999999';
-      const aadhaarNumber = process.env.INITIAL_ADMIN_AADHAAR || '999999999999';
+      const email = requiredEnv('INITIAL_ADMIN_EMAIL');
+      const password = requiredEnv('INITIAL_ADMIN_PASSWORD');
+      const name = requiredEnv('INITIAL_ADMIN_NAME');
+      const username = requiredEnv('INITIAL_ADMIN_USERNAME');
+      const phoneNumber = requiredEnv('INITIAL_ADMIN_PHONE');
+      const aadhaarNumber = requiredEnv('INITIAL_ADMIN_AADHAAR');
 
       console.log(`No administrator found. Seeding initial administrator (${email})...`);
       await User.create({
@@ -34,7 +42,7 @@ const seedDefaultAdmin = async () => {
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    const conn = await mongoose.connect(requiredEnv('MONGO_URI'));
     console.log(`MongoDB Connected: ${conn.connection.host}`);
     await seedDefaultAdmin();
   } catch (error) {
